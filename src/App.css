@@ -42,25 +42,64 @@ body {
   filter: blur(42px);
 }
 
-.mesh-layer {
+.mesh-filter-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.mesh-field {
   position: absolute;
   inset: -10%;
   pointer-events: none;
   z-index: 1;
+  overflow: hidden;
+}
+
+.mesh-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.mesh-goo-layer {
+  filter: url(#lava-goo);
+}
+
+.mesh-outline-layer {
+  mix-blend-mode: screen;
+  opacity: 0.7;
 }
 
 .mesh-orb {
   position: absolute;
-  border-radius: 999px;
-  filter: blur(72px);
-  mix-blend-mode: screen;
+  border-radius: 46% 54% 58% 42% / 43% 57% 49% 51%;
   transform-origin: center;
-  will-change: transform, opacity, background-color, width, height;
+  will-change: transform, opacity, width, height;
+}
+
+.mesh-orb-goo {
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.74) 0%, rgba(255, 255, 255, 0.24) 30%, rgba(255, 255, 255, 0) 56%),
+    currentColor;
+}
+
+.mesh-orb-outline {
+  border: 1.4px solid color-mix(in srgb, currentColor, #ffffff 52%);
+  box-shadow:
+    0 0 0 0.6px color-mix(in srgb, currentColor, #ffffff 72%),
+    0 0 30px -10px color-mix(in srgb, currentColor, transparent 40%);
+  background: radial-gradient(
+    circle at 38% 25%,
+    color-mix(in srgb, currentColor, #ffffff 68%) 0%,
+    color-mix(in srgb, currentColor, transparent 65%) 28%,
+    rgba(255, 255, 255, 0) 62%
+  );
+  filter: blur(0.45px);
 }
 
 .text-pane,
 .video-pane {
-  z-index: 2;
+  z-index: 3;
 }
 
 .text-pane {
@@ -69,24 +108,13 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  backdrop-filter: blur(1.5px);
-}
-
-.text-pane::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: -18%;
-  width: 28%;
-  height: 100%;
-  pointer-events: none;
   background: linear-gradient(
     90deg,
-    rgba(247, 247, 247, 0.96) 0%,
-    color-mix(in srgb, var(--accent-a), transparent 72%) 45%,
-    rgba(247, 247, 247, 0) 100%
+    rgba(247, 247, 247, 0.72) 0%,
+    rgba(247, 247, 247, 0.62) 66%,
+    rgba(247, 247, 247, 0.3) 100%
   );
-  z-index: 4;
+  backdrop-filter: blur(1.5px);
 }
 
 .eyebrow {
@@ -171,6 +199,27 @@ body {
   overflow: hidden;
 }
 
+.video-pane::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: clamp(64px, 10vw, 190px);
+  transform: translateX(-58%);
+  z-index: 6;
+  pointer-events: none;
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    color-mix(in srgb, var(--accent-a), #ffffff 58%) 22%,
+    color-mix(in srgb, var(--accent-b), #ffffff 75%) 54%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
 .memory-video {
   position: absolute;
   inset: 0;
@@ -184,9 +233,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(247, 247, 247, 0.22) 0%, rgba(247, 247, 247, 0) 17%),
-    linear-gradient(5deg, rgba(8, 8, 8, 0.1) 0%, rgba(8, 8, 8, 0) 26%);
+  background: linear-gradient(5deg, rgba(8, 8, 8, 0.1) 0%, rgba(8, 8, 8, 0) 26%);
 }
 
 .video-fallback {
@@ -222,29 +269,28 @@ body {
     padding: 1.5rem clamp(1rem, 4.8vw, 2.2rem) 2rem;
   }
 
-  .text-pane::after {
-    top: -20%;
-    right: auto;
-    left: 0;
-    width: 100%;
-    height: 24%;
-    background: linear-gradient(
-      180deg,
-      rgba(247, 247, 247, 0.85) 0%,
-      color-mix(in srgb, var(--accent-a), transparent 76%) 48%,
-      rgba(247, 247, 247, 0) 100%
-    );
-  }
-
   .video-pane {
     min-height: 46vh;
     order: 1;
   }
 
+  .video-pane::before {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: clamp(42px, 8vh, 88px);
+    transform: none;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0) 0%,
+      color-mix(in srgb, var(--accent-a), #ffffff 72%) 48%,
+      rgba(255, 255, 255, 0.9) 100%
+    );
+  }
+
   .video-pane::after {
-    background:
-      linear-gradient(180deg, rgba(247, 247, 247, 0.2) 0%, rgba(247, 247, 247, 0) 19%),
-      linear-gradient(5deg, rgba(8, 8, 8, 0.09) 0%, rgba(8, 8, 8, 0) 26%);
+    background: linear-gradient(5deg, rgba(8, 8, 8, 0.09) 0%, rgba(8, 8, 8, 0) 26%);
   }
 
   .title {
