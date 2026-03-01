@@ -1,0 +1,201 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Manrope:wght@400;500;600&family=Parisienne&display=swap");
+
+:root {
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f7f7f7;
+  color: #0f0f0f;
+}
+
+.page {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(320px, 44%) minmax(420px, 56%);
+  background:
+    radial-gradient(circle at 8% 12%, color-mix(in srgb, var(--accent-a), transparent 76%) 0%, transparent 50%),
+    radial-gradient(circle at 92% 92%, color-mix(in srgb, var(--accent-b), transparent 80%) 0%, transparent 48%),
+    linear-gradient(150deg, #ffffff 0%, #f5f5f5 100%);
+  overflow: hidden;
+  transition: background 700ms ease;
+}
+
+.color-burst {
+  position: absolute;
+  inset: -28%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--accent-a), transparent 54%) 0%, transparent 34%),
+    radial-gradient(circle at 74% 60%, color-mix(in srgb, var(--accent-b), transparent 56%) 0%, transparent 38%);
+  filter: blur(42px);
+}
+
+.text-pane,
+.video-pane {
+  z-index: 2;
+}
+
+.text-pane {
+  padding: clamp(2.2rem, 5vw, 5rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid color-mix(in srgb, var(--accent-a), #c8c8c8 75%);
+  backdrop-filter: blur(1.5px);
+}
+
+.eyebrow {
+  margin: 0 0 1rem;
+  font: 600 0.76rem/1.4 "Manrope", sans-serif;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #545454;
+}
+
+.title {
+  margin: 0;
+  max-width: 22ch;
+  font: 600 clamp(2.2rem, 6vw, 4.7rem) / 1.02 "Cormorant Garamond", serif;
+}
+
+.handwritten {
+  font-family: "Parisienne", cursive;
+  font-size: 1.25em;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--accent-a), #1f1f1f 58%);
+}
+
+.copy {
+  margin-top: 1.6rem;
+  max-width: 40ch;
+}
+
+.copy p {
+  margin: 0 0 0.9rem;
+  font: 500 clamp(1.04rem, 1.55vw, 1.3rem) / 1.5 "Cormorant Garamond", serif;
+}
+
+.controls {
+  margin-top: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+}
+
+.advance {
+  border: none;
+  cursor: pointer;
+  padding: 0.84rem 1.34rem;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  font: 500 0.86rem/1 "Manrope", sans-serif;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  transition: transform 180ms ease, box-shadow 250ms ease, background 250ms ease;
+  box-shadow: 0 14px 36px -24px color-mix(in srgb, var(--accent-b), #000 72%);
+}
+
+.advance:hover {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--accent-a), #0d0d0d 45%);
+}
+
+.step-indicator {
+  margin: 0;
+  font: 600 0.77rem/1 "Manrope", sans-serif;
+  letter-spacing: 0.16em;
+  color: #5f5f5f;
+}
+
+.music-fix {
+  margin-top: 0.9rem;
+  border: 1px dashed #303030;
+  width: fit-content;
+  background: transparent;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font: 500 0.8rem/1 "Manrope", sans-serif;
+}
+
+.video-pane {
+  position: relative;
+  min-height: 100vh;
+  background: #0a0a0a;
+}
+
+.memory-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-pane::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(8, 8, 8, 0.2) 0%, rgba(8, 8, 8, 0) 18%),
+    linear-gradient(5deg, rgba(8, 8, 8, 0.1) 0%, rgba(8, 8, 8, 0) 26%);
+}
+
+.video-fallback {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(80%, 520px);
+  text-align: center;
+  background: rgba(245, 245, 245, 0.9);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  font: 500 0.82rem/1.35 "Manrope", sans-serif;
+  color: #111;
+}
+
+.video-fallback code {
+  display: block;
+  margin-top: 0.55rem;
+  font: 600 0.76rem/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  word-break: break-all;
+}
+
+@media (max-width: 950px) {
+  .page {
+    grid-template-columns: 1fr;
+    grid-template-rows: 46vh 1fr;
+  }
+
+  .text-pane {
+    border-right: none;
+    border-top: 1px solid color-mix(in srgb, var(--accent-a), #cecece 80%);
+    order: 2;
+    justify-content: flex-start;
+    padding: 1.5rem clamp(1rem, 4.8vw, 2.2rem) 2rem;
+  }
+
+  .video-pane {
+    min-height: 46vh;
+    order: 1;
+  }
+
+  .title {
+    max-width: none;
+  }
+}
