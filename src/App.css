@@ -42,18 +42,51 @@ body {
   filter: blur(42px);
 }
 
+.mesh-layer {
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.mesh-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(72px);
+  mix-blend-mode: screen;
+  transform-origin: center;
+  will-change: transform, opacity, background-color, width, height;
+}
+
 .text-pane,
 .video-pane {
   z-index: 2;
 }
 
 .text-pane {
+  position: relative;
   padding: clamp(2.2rem, 5vw, 5rem);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  border-right: 1px solid color-mix(in srgb, var(--accent-a), #c8c8c8 75%);
   backdrop-filter: blur(1.5px);
+}
+
+.text-pane::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -18%;
+  width: 28%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(247, 247, 247, 0.96) 0%,
+    color-mix(in srgb, var(--accent-a), transparent 72%) 45%,
+    rgba(247, 247, 247, 0) 100%
+  );
+  z-index: 4;
 }
 
 .eyebrow {
@@ -135,6 +168,7 @@ body {
   position: relative;
   min-height: 100vh;
   background: #0a0a0a;
+  overflow: hidden;
 }
 
 .memory-video {
@@ -151,7 +185,7 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(8, 8, 8, 0.2) 0%, rgba(8, 8, 8, 0) 18%),
+    linear-gradient(90deg, rgba(247, 247, 247, 0.22) 0%, rgba(247, 247, 247, 0) 17%),
     linear-gradient(5deg, rgba(8, 8, 8, 0.1) 0%, rgba(8, 8, 8, 0) 26%);
 }
 
@@ -183,16 +217,34 @@ body {
   }
 
   .text-pane {
-    border-right: none;
-    border-top: 1px solid color-mix(in srgb, var(--accent-a), #cecece 80%);
     order: 2;
     justify-content: flex-start;
     padding: 1.5rem clamp(1rem, 4.8vw, 2.2rem) 2rem;
   }
 
+  .text-pane::after {
+    top: -20%;
+    right: auto;
+    left: 0;
+    width: 100%;
+    height: 24%;
+    background: linear-gradient(
+      180deg,
+      rgba(247, 247, 247, 0.85) 0%,
+      color-mix(in srgb, var(--accent-a), transparent 76%) 48%,
+      rgba(247, 247, 247, 0) 100%
+    );
+  }
+
   .video-pane {
     min-height: 46vh;
     order: 1;
+  }
+
+  .video-pane::after {
+    background:
+      linear-gradient(180deg, rgba(247, 247, 247, 0.2) 0%, rgba(247, 247, 247, 0) 19%),
+      linear-gradient(5deg, rgba(8, 8, 8, 0.09) 0%, rgba(8, 8, 8, 0) 26%);
   }
 
   .title {

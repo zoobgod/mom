@@ -20,6 +20,8 @@ const slides = [
     accentA: "#f2f2f2",
     accentB: "#d8d8d8",
     videoFilter: "grayscale(100%) contrast(1.08)",
+    meshScale: 0.9,
+    meshColors: ["#f8f8f8", "#ececec", "#e3e3e3", "#d9d9d9"],
   },
   {
     id: "childhood",
@@ -39,6 +41,8 @@ const slides = [
     accentA: "#28b8ff",
     accentB: "#16e085",
     videoFilter: "saturate(1.08)",
+    meshScale: 1,
+    meshColors: ["#88e0ff", "#53f0c4", "#41a4ff", "#f5ffe9"],
   },
   {
     id: "strength",
@@ -59,6 +63,8 @@ const slides = [
     accentA: "#3f7bff",
     accentB: "#ffb703",
     videoFilter: "saturate(1.1)",
+    meshScale: 1.08,
+    meshColors: ["#6f9dff", "#ffd56a", "#5bc5ff", "#ff9f68"],
   },
   {
     id: "final",
@@ -78,7 +84,17 @@ const slides = [
     accentA: "#27d3ff",
     accentB: "#ff5d8f",
     videoFilter: "saturate(1.18)",
+    meshScale: 1.16,
+    meshColors: ["#5be6ff", "#ff83aa", "#90fff3", "#e8f0ff"],
   },
+];
+
+const meshOrbs = [
+  { id: "orb-1", x: "6%", y: "8%", size: 370, driftX: 34, driftY: 28, duration: 18 },
+  { id: "orb-2", x: "38%", y: "64%", size: 300, driftX: -26, driftY: 24, duration: 21 },
+  { id: "orb-3", x: "64%", y: "20%", size: 360, driftX: 30, driftY: -20, duration: 24 },
+  { id: "orb-4", x: "82%", y: "70%", size: 340, driftX: -32, driftY: -28, duration: 20 },
+  { id: "orb-5", x: "24%", y: "38%", size: 260, driftX: 20, driftY: -18, duration: 16 },
 ];
 
 function App() {
@@ -151,6 +167,39 @@ function App() {
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
         />
       </AnimatePresence>
+
+      <div className="mesh-layer" aria-hidden="true">
+        {meshOrbs.map((orb, index) => {
+          const color = currentSlide.meshColors[index % currentSlide.meshColors.length];
+          const nextScale = currentSlide.meshScale * (index % 2 === 0 ? 1 : 0.88);
+
+          return (
+            <motion.span
+              key={orb.id}
+              className="mesh-orb"
+              style={{ left: orb.x, top: orb.y }}
+              animate={{
+                x: [-orb.driftX, orb.driftX, -orb.driftX * 0.45, -orb.driftX],
+                y: [-orb.driftY, orb.driftY * 0.7, orb.driftY, -orb.driftY],
+                scale: [0.92, 1.03, 0.97, 1.01],
+                opacity: [0.16, 0.34, 0.22, 0.3],
+                width: orb.size * nextScale,
+                height: orb.size * nextScale,
+                backgroundColor: color,
+              }}
+              transition={{
+                x: { duration: orb.duration, repeat: Infinity, ease: "easeInOut" },
+                y: { duration: orb.duration * 1.15, repeat: Infinity, ease: "easeInOut" },
+                scale: { duration: orb.duration * 0.7, repeat: Infinity, ease: "easeInOut" },
+                opacity: { duration: orb.duration * 0.6, repeat: Infinity, ease: "easeInOut" },
+                width: { duration: 1.2, ease: [0.22, 1, 0.36, 1] },
+                height: { duration: 1.2, ease: [0.22, 1, 0.36, 1] },
+                backgroundColor: { duration: 1.2, ease: "easeInOut" },
+              }}
+            />
+          );
+        })}
+      </div>
 
       <section className="text-pane">
         <motion.p
