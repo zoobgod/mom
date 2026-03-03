@@ -14,8 +14,8 @@
 
 body {
   margin: 0;
-  background: #f7f7f7;
-  color: #0f0f0f;
+  background: #000;
+  color: #fff;
 }
 
 .page {
@@ -24,9 +24,9 @@ body {
   display: grid;
   grid-template-columns: minmax(320px, 44%) minmax(420px, 56%);
   background:
-    radial-gradient(circle at 8% 12%, color-mix(in srgb, var(--accent-a), transparent 76%) 0%, transparent 50%),
-    radial-gradient(circle at 92% 92%, color-mix(in srgb, var(--accent-b), transparent 80%) 0%, transparent 48%),
-    linear-gradient(150deg, #ffffff 0%, #f5f5f5 100%);
+    radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--accent-a), transparent 84%) 0%, transparent 48%),
+    radial-gradient(circle at 88% 88%, color-mix(in srgb, var(--accent-b), transparent 86%) 0%, transparent 44%),
+    #050505;
   overflow: hidden;
   transition: background 700ms ease;
 }
@@ -39,62 +39,23 @@ body {
   background:
     radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--accent-a), transparent 54%) 0%, transparent 34%),
     radial-gradient(circle at 74% 60%, color-mix(in srgb, var(--accent-b), transparent 56%) 0%, transparent 38%);
-  filter: blur(42px);
-}
-
-.mesh-filter-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-}
-
-.mesh-field {
-  position: absolute;
-  inset: -10%;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
+  filter: blur(48px);
 }
 
 .mesh-layer {
   position: absolute;
-  inset: 0;
-}
-
-.mesh-goo-layer {
-  filter: url(#lava-goo);
-}
-
-.mesh-outline-layer {
-  mix-blend-mode: screen;
-  opacity: 0.7;
+  inset: -10%;
+  pointer-events: none;
+  z-index: 4;
 }
 
 .mesh-orb {
   position: absolute;
-  border-radius: 46% 54% 58% 42% / 43% 57% 49% 51%;
+  border-radius: 999px;
+  filter: blur(72px);
+  mix-blend-mode: screen;
   transform-origin: center;
-  will-change: transform, opacity, width, height;
-}
-
-.mesh-orb-goo {
-  background:
-    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.74) 0%, rgba(255, 255, 255, 0.24) 30%, rgba(255, 255, 255, 0) 56%),
-    currentColor;
-}
-
-.mesh-orb-outline {
-  border: 1.4px solid color-mix(in srgb, currentColor, #ffffff 52%);
-  box-shadow:
-    0 0 0 0.6px color-mix(in srgb, currentColor, #ffffff 72%),
-    0 0 30px -10px color-mix(in srgb, currentColor, transparent 40%);
-  background: radial-gradient(
-    circle at 38% 25%,
-    color-mix(in srgb, currentColor, #ffffff 68%) 0%,
-    color-mix(in srgb, currentColor, transparent 65%) 28%,
-    rgba(255, 255, 255, 0) 62%
-  );
-  filter: blur(0.45px);
+  will-change: transform, opacity, background-color, width, height;
 }
 
 .text-pane,
@@ -108,13 +69,13 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: linear-gradient(
-    90deg,
-    rgba(247, 247, 247, 0.72) 0%,
-    rgba(247, 247, 247, 0.62) 66%,
-    rgba(247, 247, 247, 0.3) 100%
-  );
-  backdrop-filter: blur(1.5px);
+  background: #000;
+  color: #fff;
+}
+
+.text-pane > * {
+  position: relative;
+  z-index: 7;
 }
 
 .eyebrow {
@@ -122,20 +83,21 @@ body {
   font: 600 0.76rem/1.4 "Manrope", sans-serif;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #545454;
+  color: #cfcfcf;
 }
 
 .title {
   margin: 0;
   max-width: 22ch;
   font: 600 clamp(2.2rem, 6vw, 4.7rem) / 1.02 "Cormorant Garamond", serif;
+  color: #fff;
 }
 
 .handwritten {
   font-family: "Parisienne", cursive;
   font-size: 1.25em;
   letter-spacing: 0.02em;
-  color: color-mix(in srgb, var(--accent-a), #1f1f1f 58%);
+  color: color-mix(in srgb, var(--accent-a), #ffffff 35%);
 }
 
 .copy {
@@ -146,6 +108,7 @@ body {
 .copy p {
   margin: 0 0 0.9rem;
   font: 500 clamp(1.04rem, 1.55vw, 1.3rem) / 1.5 "Cormorant Garamond", serif;
+  color: #f3f3f3;
 }
 
 .controls {
@@ -156,40 +119,42 @@ body {
 }
 
 .advance {
-  border: none;
+  border: 1px solid #fff;
   cursor: pointer;
   padding: 0.84rem 1.34rem;
   border-radius: 999px;
-  background: #111;
-  color: #fff;
+  background: #fff;
+  color: #000;
   font: 500 0.86rem/1 "Manrope", sans-serif;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  transition: transform 180ms ease, box-shadow 250ms ease, background 250ms ease;
-  box-shadow: 0 14px 36px -24px color-mix(in srgb, var(--accent-b), #000 72%);
+  transition: transform 180ms ease, box-shadow 250ms ease, background 250ms ease, color 250ms ease;
+  box-shadow: 0 14px 30px -20px color-mix(in srgb, var(--accent-b), #000 55%);
 }
 
 .advance:hover {
   transform: translateY(-2px);
-  background: color-mix(in srgb, var(--accent-a), #0d0d0d 45%);
+  background: #0d0d0d;
+  color: #fff;
 }
 
 .step-indicator {
   margin: 0;
   font: 600 0.77rem/1 "Manrope", sans-serif;
   letter-spacing: 0.16em;
-  color: #5f5f5f;
+  color: #bcbcbc;
 }
 
 .music-fix {
   margin-top: 0.9rem;
-  border: 1px dashed #303030;
+  border: 1px dashed #a9a9a9;
   width: fit-content;
   background: transparent;
   padding: 0.5rem 0.8rem;
   border-radius: 8px;
   cursor: pointer;
   font: 500 0.8rem/1 "Manrope", sans-serif;
+  color: #fff;
 }
 
 .video-pane {
@@ -205,18 +170,17 @@ body {
   top: 0;
   bottom: 0;
   left: 0;
-  width: clamp(64px, 10vw, 190px);
-  transform: translateX(-58%);
-  z-index: 6;
+  width: clamp(56px, 9vw, 150px);
+  transform: translateX(-46%);
+  z-index: 5;
   pointer-events: none;
-  backdrop-filter: blur(18px) saturate(130%);
-  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  backdrop-filter: blur(12px) saturate(108%);
+  -webkit-backdrop-filter: blur(12px) saturate(108%);
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.92) 0%,
-    color-mix(in srgb, var(--accent-a), #ffffff 58%) 22%,
-    color-mix(in srgb, var(--accent-b), #ffffff 75%) 54%,
-    rgba(255, 255, 255, 0) 100%
+    rgba(0, 0, 0, 0.96) 0%,
+    rgba(0, 0, 0, 0.62) 42%,
+    rgba(0, 0, 0, 0) 100%
   );
 }
 
@@ -248,6 +212,7 @@ body {
   padding: 1rem 1.25rem;
   font: 500 0.82rem/1.35 "Manrope", sans-serif;
   color: #111;
+  z-index: 8;
 }
 
 .video-fallback code {
@@ -279,13 +244,13 @@ body {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: clamp(42px, 8vh, 88px);
+    height: clamp(50px, 9vh, 92px);
     transform: none;
     background: linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0) 0%,
-      color-mix(in srgb, var(--accent-a), #ffffff 72%) 48%,
-      rgba(255, 255, 255, 0.9) 100%
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.58) 46%,
+      rgba(0, 0, 0, 0.93) 100%
     );
   }
 
