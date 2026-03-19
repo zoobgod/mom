@@ -1,5 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import Plyr from "plyr";
+import "plyr/dist/plyr.css";
 
 const slides = [
   {
@@ -96,6 +98,54 @@ const meshOrbs = [
   { id: "orb-4", x: "82%", y: "70%", size: 340, driftX: -32, driftY: -28, duration: 20 },
   { id: "orb-5", x: "24%", y: "38%", size: 260, driftX: 20, driftY: -18, duration: 16 },
 ];
+
+function PlyrVideo({ src, filter, onError }) {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    if (!videoRef.current) {
+      return undefined;
+    }
+
+    const player = new Plyr(videoRef.current, {
+      autoplay: true,
+      clickToPlay: false,
+      controls: [],
+      fullscreen: { enabled: false, iosNative: false },
+      hideControls: true,
+      keyboard: { focused: false, global: false },
+      loop: { active: true },
+      muted: true,
+      tooltips: { controls: false, seek: false },
+    });
+
+    player.muted = true;
+    player.loop = true;
+    player.play().catch(() => {});
+
+    return () => {
+      player.destroy();
+    };
+  }, []);
+
+  return (
+    <div className="memory-player">
+      <video
+        ref={videoRef}
+        className="memory-video"
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        style={{ filter }}
+        onError={onError}
+      >
+        <source src={src} type="video/mp4" />
+      </video>
+    </div>
+  );
+}
 
 function App() {
   const [step, setStep] = useState(0);
@@ -258,25 +308,22 @@ function App() {
 
       <section className="video-pane">
         <AnimatePresence mode="wait">
-          <motion.video
+          <motion.div
             key={currentSlide.video}
-            className="memory-video"
-            autoPlay
-            loop
-            playsInline
-            muted
-            preload="auto"
-            style={{ filter: currentSlide.videoFilter }}
-            onError={() =>
-              setVideoFailed((prev) => ({ ...prev, [currentSlide.video]: true }))
-            }
+            className="memory-video-shell"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <source src={currentSlide.video} type="video/mp4" />
-          </motion.video>
+            <PlyrVideo
+              src={currentSlide.video}
+              filter={currentSlide.videoFilter}
+              onError={() =>
+                setVideoFailed((prev) => ({ ...prev, [currentSlide.video]: true }))
+              }
+            />
+          </motion.div>
         </AnimatePresence>
 
         {videoFailed[currentSlide.video] ? (

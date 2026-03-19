@@ -164,6 +164,12 @@ body {
   overflow: hidden;
 }
 
+.memory-video-shell,
+.memory-player {
+  position: absolute;
+  inset: 0;
+}
+
 .video-pane::before {
   content: "";
   position: absolute;
@@ -190,6 +196,40 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.memory-player .plyr,
+.memory-player .plyr__video-wrapper,
+.memory-player .plyr video {
+  width: 100%;
+  height: 100%;
+}
+
+.memory-player .plyr {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+}
+
+.memory-player .plyr__video-wrapper {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.memory-player .plyr video {
+  position: absolute;
+  inset: 0;
+  object-fit: cover;
+}
+
+.memory-player .plyr__controls,
+.memory-player .plyr__control,
+.memory-player .plyr__menu,
+.memory-player .plyr__menu__container,
+.memory-player .plyr__control--overlaid {
+  display: none !important;
 }
 
 .video-pane::after {
