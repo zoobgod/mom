@@ -71,6 +71,33 @@ body {
   justify-content: center;
   background: #000;
   color: #fff;
+  z-index: 5;
+  overflow: visible;
+}
+
+.text-pane.has-playlist {
+  padding-bottom: clamp(23rem, 30vw, 28rem);
+}
+
+.text-pane::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: calc(clamp(110px, 12vw, 190px) * -1);
+  width: clamp(160px, 18vw, 280px);
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.94) 22%,
+    rgba(0, 0, 0, 0.72) 48%,
+    rgba(0, 0, 0, 0.34) 72%,
+    rgba(0, 0, 0, 0.08) 88%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  filter: blur(16px);
 }
 
 .text-pane > * {
@@ -157,11 +184,60 @@ body {
   color: #fff;
 }
 
+.playlist-panel {
+  position: absolute;
+  left: clamp(1.5rem, 3vw, 2.8rem);
+  right: clamp(1.5rem, 3vw, 2.8rem);
+  bottom: clamp(1.5rem, 3vw, 2.4rem);
+  z-index: 8;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(22px);
+  transition: opacity 420ms ease, transform 420ms ease;
+}
+
+.playlist-panel.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.playlist-heading {
+  margin: 0 0 1rem;
+  max-width: 24ch;
+  font: 500 clamp(1.1rem, 2vw, 1.45rem) / 1.35 "Cormorant Garamond", serif;
+  color: #f4f4f4;
+}
+
+.spotify-embed {
+  width: 100%;
+  min-height: 352px;
+  border-radius: 22px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.03);
+  box-shadow:
+    0 24px 60px -32px rgba(0, 0, 0, 0.72),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.spotify-embed iframe {
+  display: block;
+  width: 100%;
+  min-height: 352px;
+  border: 0;
+  border-radius: 22px;
+}
+
 .video-pane {
   position: relative;
   min-height: 100vh;
   background: #0a0a0a;
   overflow: hidden;
+  margin-left: calc(clamp(72px, 8vw, 128px) * -1);
 }
 
 .memory-video-shell,
@@ -176,16 +252,16 @@ body {
   top: 0;
   bottom: 0;
   left: 0;
-  width: clamp(56px, 9vw, 150px);
-  transform: translateX(-46%);
+  width: clamp(92px, 12vw, 180px);
+  transform: translateX(-28%);
   z-index: 5;
   pointer-events: none;
-  backdrop-filter: blur(12px) saturate(108%);
-  -webkit-backdrop-filter: blur(12px) saturate(108%);
+  backdrop-filter: blur(20px) saturate(116%);
+  -webkit-backdrop-filter: blur(20px) saturate(116%);
   background: linear-gradient(
     90deg,
-    rgba(0, 0, 0, 0.96) 0%,
-    rgba(0, 0, 0, 0.62) 42%,
+    rgba(0, 0, 0, 0.76) 0%,
+    rgba(0, 0, 0, 0.38) 42%,
     rgba(0, 0, 0, 0) 100%
   );
 }
@@ -274,9 +350,30 @@ body {
     padding: 1.5rem clamp(1rem, 4.8vw, 2.2rem) 2rem;
   }
 
+  .text-pane.has-playlist {
+    padding-bottom: 24rem;
+  }
+
+  .text-pane::after {
+    top: calc(clamp(52px, 9vw, 90px) * -1);
+    right: 0;
+    width: 100%;
+    height: clamp(72px, 10vh, 110px);
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.18) 18%,
+      rgba(0, 0, 0, 0.52) 54%,
+      rgba(0, 0, 0, 0.84) 82%,
+      rgba(0, 0, 0, 1) 100%
+    );
+    filter: blur(12px);
+  }
+
   .video-pane {
     min-height: 46vh;
     order: 1;
+    margin-left: 0;
   }
 
   .video-pane::before {
@@ -289,8 +386,9 @@ body {
     background: linear-gradient(
       180deg,
       rgba(0, 0, 0, 0) 0%,
-      rgba(0, 0, 0, 0.58) 46%,
-      rgba(0, 0, 0, 0.93) 100%
+      rgba(0, 0, 0, 0.32) 34%,
+      rgba(0, 0, 0, 0.72) 72%,
+      rgba(0, 0, 0, 0.96) 100%
     );
   }
 
@@ -300,5 +398,16 @@ body {
 
   .title {
     max-width: none;
+  }
+
+  .playlist-panel {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+  }
+
+  .spotify-embed,
+  .spotify-embed iframe {
+    min-height: 332px;
   }
 }

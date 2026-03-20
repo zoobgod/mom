@@ -3,22 +3,24 @@ import { AnimatePresence, motion } from "framer-motion";
 import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 
+const SPOTIFY_PLAYLIST_URI = "spotify:playlist:37i9dQZF1DZ06evO18rRzG";
+
 const slides = [
   {
     id: "welcome",
-    eyebrow: "Step 01",
+    eyebrow: "Шаг 01",
     heading: (
       <>
-        Hi, <span className="handwritten">Mom</span>.
+        С днем рождения, <span className="handwritten">Масечка</span>.
       </>
     ),
     lines: [
-      "Today is yours.",
-      "A quiet page, a few memories, and all the love we carry every day.",
-      "Click whenever you are ready.",
+      "Мы тебя очень любим. Ты наше все.",
+      "Спасибо тебе за жизнь, за любовь, за тепло, которым ты наполнила наш мир.",
+      "Сегодня все это только для тебя.",
     ],
     video: "/media/videos/01-welcome.mp4",
-    buttonLabel: "Begin",
+    buttonLabel: "Начать",
     accentA: "#f2f2f2",
     accentB: "#d8d8d8",
     videoFilter: "grayscale(100%) contrast(1.08)",
@@ -27,19 +29,19 @@ const slides = [
   },
   {
     id: "childhood",
-    eyebrow: "Step 02",
+    eyebrow: "Шаг 02",
     heading: (
       <>
-        You gave us a <span className="handwritten">beautiful</span> childhood.
+        Ты самая <span className="handwritten">невероятная</span>.
       </>
     ),
     lines: [
-      "In every small moment, you made home feel safe.",
-      "The way you cared for us became our first idea of kindness.",
-      "We still carry that warmth everywhere.",
+      "Самая храбрая. Самая сильная. Самая нежная.",
+      "Ты всегда шла вперед ради нас и никогда не переставала любить.",
+      "Именно благодаря тебе и твоим стараниям мы стали теми, кем являемся.",
     ],
     video: "/media/videos/02-childhood.mp4",
-    buttonLabel: "Next Memory",
+    buttonLabel: "Дальше",
     accentA: "#28b8ff",
     accentB: "#16e085",
     videoFilter: "saturate(1.08)",
@@ -48,20 +50,19 @@ const slides = [
   },
   {
     id: "strength",
-    eyebrow: "Step 03",
+    eyebrow: "Шаг 03",
     heading: (
       <>
-        You taught us what <span className="handwritten">strength</span> looks
-        like.
+        Ты наш дом и наша <span className="handwritten">сила</span>.
       </>
     ),
     lines: [
-      "Not loud, not dramatic, just steady and true.",
-      "You kept going, and because of that, we learned to keep going too.",
-      "Thank you for every silent sacrifice.",
+      "Все самое важное в нас началось с тебя.",
+      "Твоя забота, твое терпение и твое большое сердце всегда будут внутри нас.",
+      "Спасибо тебе за каждую жертву, за каждое усилие и за каждую тихую победу.",
     ],
     video: "/media/videos/03-strength.mp4",
-    buttonLabel: "One More",
+    buttonLabel: "Еще",
     accentA: "#3f7bff",
     accentB: "#ffb703",
     videoFilter: "saturate(1.1)",
@@ -70,19 +71,19 @@ const slides = [
   },
   {
     id: "final",
-    eyebrow: "Step 04",
+    eyebrow: "Шаг 04",
     heading: (
       <>
-        Happy Birthday, <span className="handwritten">our hero</span>.
+        С днем рождения, наша <span className="handwritten">любимая</span>.
       </>
     ),
     lines: [
-      "This final video says what words can only start to say.",
-      "We love you deeply, completely, and forever.",
-      "Thank you for being our Mom.",
+      "Масечка, мы тебя бесконечно любим.",
+      "Спасибо, что ты у нас есть. Спасибо, что ты именно такая.",
+      "Ты наше все. Всегда.",
     ],
     video: "/media/videos/04-final-main.mp4",
-    buttonLabel: "Start Again",
+    buttonLabel: "Сначала",
     accentA: "#27d3ff",
     accentB: "#ff5d8f",
     videoFilter: "saturate(1.18)",
@@ -98,6 +99,47 @@ const meshOrbs = [
   { id: "orb-4", x: "82%", y: "70%", size: 340, driftX: -32, driftY: -28, duration: 20 },
   { id: "orb-5", x: "24%", y: "38%", size: 260, driftX: 20, driftY: -18, duration: 16 },
 ];
+
+let spotifyIframeApiPromise;
+
+function loadSpotifyIframeApi() {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Spotify iframe API requires a browser"));
+  }
+
+  if (window.SpotifyIframeApi) {
+    return Promise.resolve(window.SpotifyIframeApi);
+  }
+
+  if (spotifyIframeApiPromise) {
+    return spotifyIframeApiPromise;
+  }
+
+  spotifyIframeApiPromise = new Promise((resolve) => {
+    const previousReadyHandler = window.onSpotifyIframeApiReady;
+
+    window.onSpotifyIframeApiReady = (api) => {
+      window.SpotifyIframeApi = api;
+      if (typeof previousReadyHandler === "function") {
+        previousReadyHandler(api);
+      }
+      resolve(api);
+    };
+
+    const existingScript = document.querySelector(
+      'script[src="https://open.spotify.com/embed/iframe-api/v1"]',
+    );
+
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.src = "https://open.spotify.com/embed/iframe-api/v1";
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  });
+
+  return spotifyIframeApiPromise;
+}
 
 function PlyrVideo({ src, filter, onError }) {
   const videoRef = useRef(null);
@@ -147,12 +189,73 @@ function PlyrVideo({ src, filter, onError }) {
   );
 }
 
+function SpotifyPlaylist({ onControllerReady, onPlaybackStarted }) {
+  const embedRef = useRef(null);
+  const readyHandlerRef = useRef(onControllerReady);
+  const playbackHandlerRef = useRef(onPlaybackStarted);
+
+  useEffect(() => {
+    readyHandlerRef.current = onControllerReady;
+    playbackHandlerRef.current = onPlaybackStarted;
+  }, [onControllerReady, onPlaybackStarted]);
+
+  useEffect(() => {
+    let isActive = true;
+    let controller;
+
+    loadSpotifyIframeApi()
+      .then((api) => {
+        if (!isActive || !embedRef.current) {
+          return;
+        }
+
+        api.createController(
+          embedRef.current,
+          {
+            width: "100%",
+            height: "352",
+            uri: SPOTIFY_PLAYLIST_URI,
+          },
+          (embedController) => {
+            controller = embedController;
+
+            controller.addListener("ready", () => {
+              if (!isActive) {
+                return;
+              }
+              readyHandlerRef.current?.(controller);
+            });
+
+            controller.addListener("playback_started", () => {
+              if (!isActive) {
+                return;
+              }
+              playbackHandlerRef.current?.();
+            });
+          },
+        );
+      })
+      .catch(() => {});
+
+    return () => {
+      isActive = false;
+      if (controller) {
+        controller.destroy();
+      }
+    };
+  }, []);
+
+  return <div ref={embedRef} className="spotify-embed" />;
+}
+
 function App() {
   const [step, setStep] = useState(0);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [musicBlocked, setMusicBlocked] = useState(false);
   const [videoFailed, setVideoFailed] = useState({});
-  const audioRef = useRef(null);
+  const spotifyControllerRef = useRef(null);
+  const playlistStartRequestedRef = useRef(false);
+  const playbackTimeoutRef = useRef(null);
   const currentSlide = slides[step];
 
   const isLastStep = step === slides.length - 1;
@@ -161,38 +264,61 @@ function App() {
     [step],
   );
 
-  const startMusic = async () => {
-    if (!audioRef.current || hasInteracted) {
+  useEffect(() => {
+    return () => {
+      if (playbackTimeoutRef.current) {
+        window.clearTimeout(playbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const startPlaylist = () => {
+    playlistStartRequestedRef.current = true;
+
+    if (!spotifyControllerRef.current) {
       return;
     }
 
-    audioRef.current.volume = 0.35;
+    if (playbackTimeoutRef.current) {
+      window.clearTimeout(playbackTimeoutRef.current);
+    }
+
     try {
-      await audioRef.current.play();
+      spotifyControllerRef.current.play();
       setMusicBlocked(false);
+      playbackTimeoutRef.current = window.setTimeout(() => {
+        setMusicBlocked(true);
+      }, 1600);
     } catch {
       setMusicBlocked(true);
     }
   };
 
-  const onAdvance = async () => {
+  const onAdvance = () => {
     if (!hasInteracted) {
       setHasInteracted(true);
-      await startMusic();
+      startPlaylist();
     }
     setStep((prev) => (prev + 1) % slides.length);
   };
 
-  const onRetryMusic = async () => {
-    if (!audioRef.current) {
-      return;
+  const onRetryMusic = () => {
+    startPlaylist();
+  };
+
+  const onSpotifyControllerReady = (controller) => {
+    spotifyControllerRef.current = controller;
+
+    if (playlistStartRequestedRef.current) {
+      startPlaylist();
     }
-    try {
-      await audioRef.current.play();
-      setMusicBlocked(false);
-    } catch {
-      setMusicBlocked(true);
+  };
+
+  const onSpotifyPlaybackStarted = () => {
+    if (playbackTimeoutRef.current) {
+      window.clearTimeout(playbackTimeoutRef.current);
     }
+    setMusicBlocked(false);
   };
 
   return (
@@ -203,10 +329,6 @@ function App() {
         "--accent-b": currentSlide.accentB,
       }}
     >
-      <audio ref={audioRef} loop preload="auto">
-        <source src="/media/music/main-track.mp3" type="audio/mpeg" />
-      </audio>
-
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide.id}
@@ -251,7 +373,7 @@ function App() {
         })}
       </div>
 
-      <section className="text-pane">
+      <section className={`text-pane${isLastStep ? " has-playlist" : ""}`}>
         <motion.p
           key={`eyebrow-${currentSlide.id}`}
           className="eyebrow"
@@ -301,9 +423,20 @@ function App() {
 
         {musicBlocked ? (
           <button className="music-fix" onClick={onRetryMusic} type="button">
-            Tap to start music
+            Нажми, чтобы включить плейлист
           </button>
         ) : null}
+
+        <div className={`playlist-panel${isLastStep ? " is-visible" : ""}`}>
+          <p className="playlist-heading">
+            Можешь остаться послушать музыку,
+            <span className="handwritten"> любим тебя</span>.
+          </p>
+          <SpotifyPlaylist
+            onControllerReady={onSpotifyControllerReady}
+            onPlaybackStarted={onSpotifyPlaybackStarted}
+          />
+        </div>
       </section>
 
       <section className="video-pane">
@@ -328,7 +461,7 @@ function App() {
 
         {videoFailed[currentSlide.video] ? (
           <div className="video-fallback">
-            <p>Drop this video file into:</p>
+            <p>Добавь видео по этому пути:</p>
             <code>{currentSlide.video}</code>
           </div>
         ) : null}
