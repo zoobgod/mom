@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 
-const SPOTIFY_PLAYLIST_URI = "spotify:playlist:37i9dQZF1DZ06evO18rRzG";
+const SPOTIFY_PLAYLIST_URI = "spotify:playlist:4UAjOazfnYv008ejMGDVSD";
 
 const slides = [
   {
