@@ -135,12 +135,14 @@ function PlyrVideo({ src, filter, muted, onError }) {
     return () => { player.destroy(); playerRef.current = null; };
   }, []);
 
-  // Sync muted prop to Plyr instance imperatively
+  // Sync muted state directly on the native video element.
+  // Bypassing Plyr is intentional: player.muted triggers Plyr internals
+  // (setVolume, updateVolume, storage writes) and player.volume = 1 causes
+  // iOS Safari to reconfigure its audio session, which steals focus from the
+  // Yandex Music iframe and kills the music. Native .muted toggle is silent
+  // to the OS audio session and doesn't interrupt other audio sources.
   useEffect(() => {
-    const player = playerRef.current;
-    if (!player) return;
-    player.muted = muted;
-    if (!muted) player.volume = 1;
+    if (videoRef.current) videoRef.current.muted = muted;
   }, [muted]);
 
   return (
@@ -226,6 +228,18 @@ function App() {
         video.muted = true;
         video.playsInline = true;
         video.src = url;
+        // iOS Safari will not fetch video data for off-DOM elements even with
+        // preload="auto". Appending with zero visual footprint forces it to load.
+        Object.assign(video.style, {
+          position: "absolute",
+          top: "-9999px",
+          left: "-9999px",
+          width: "1px",
+          height: "1px",
+          opacity: "0",
+          pointerEvents: "none",
+        });
+        document.body.appendChild(video);
 
         const finish = () => { markLoaded(url); markBootReady(url); resolve(); };
         const timeoutId = window.setTimeout(() => finish(), 12000);
@@ -243,22 +257,20 @@ function App() {
           video.removeEventListener("error", finish);
           video.src = "";
           video.load();
+          video.parentNode?.removeChild(video);
         });
       });
 
-    const runPreloadQueue = async () => {
-      const firstIndex = preloadableVideoUrls.findIndex((u) => u === initialUrl);
-      const ordered =
-        firstIndex === -1
-          ? preloadableVideoUrls
-          : [initialUrl, ...preloadableVideoUrls.filter((u) => u !== initialUrl)];
-      for (const url of ordered) {
-        if (isCancelled) break;
-        await preloadVideo(url);
-      }
-    };
-
-    runPreloadQueue();
+    // Start all video preloads in parallel — the old sequential await loop
+    // meant video 2 wouldn't start loading until video 1 finished (could be
+    // 10+ seconds on mobile). bootReady fires as soon as the first video is
+    // ready via markBootReady; the rest continue loading in the background.
+    const firstIndex = preloadableVideoUrls.findIndex((u) => u === initialUrl);
+    const ordered =
+      firstIndex === -1
+        ? preloadableVideoUrls
+        : [initialUrl, ...preloadableVideoUrls.filter((u) => u !== initialUrl)];
+    ordered.forEach((url) => { if (!isCancelled) preloadVideo(url); });
 
     return () => {
       isCancelled = true;
