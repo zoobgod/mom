@@ -4,7 +4,7 @@ import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 
 // Paste the iframe `src` value from Yandex Music: Share -> HTML code.
-const YANDEX_MUSIC_EMBED_URL = "";
+const YANDEX_MUSIC_EMBED_URL = "https://music.yandex.com/iframe/playlist/zoomzoober/1033";
 const VIDEO_LINKS = {
   welcome: "https://www.dropbox.com/scl/fi/7pj31uvzpliv55uwezvj5/01-welcome.mp4?rlkey=r32vazgq3aumy0om7g42zql6x&st=ed7as0m9&raw=1",
   childhood: "https://www.dropbox.com/scl/fi/txxm759tukn9vjv4bnz6o/02-childhood.mp4?rlkey=xieanyf2wy07pmj8xlq1bjzf6&st=imcu2v50&raw=1",
@@ -190,6 +190,7 @@ function YandexMusicPlayer() {
 
 function App() {
   const [step, setStep] = useState(0);
+  const [hasEntered, setHasEntered] = useState(false);
   const [videoFailed, setVideoFailed] = useState({});
   const [bootReady, setBootReady] = useState(false);
   const [preloadProgress, setPreloadProgress] = useState(0);
@@ -211,6 +212,7 @@ function App() {
     : 100;
 
   useEffect(() => {
+    let isCancelled = false;
     const cleanupVideos = [];
     const loadedUrls = new Set();
     const initialUrl = slides[0].videoUrl.trim() || preloadableVideoUrls[0];
@@ -239,44 +241,79 @@ function App() {
       setBootReady(true);
     }, 9000);
 
-    preloadableVideoUrls.forEach((url) => {
-      const video = document.createElement("video");
-      video.preload = "auto";
-      video.muted = true;
-      video.playsInline = true;
-      video.src = url;
+    const preloadVideo = (url) =>
+      new Promise((resolve) => {
+        const video = document.createElement("video");
+        video.preload = "auto";
+        video.muted = true;
+        video.playsInline = true;
+        video.src = url;
 
-      const onLoaded = () => {
-        markLoaded(url);
-        markBootReady(url);
-      };
+        const finish = () => {
+          markLoaded(url);
+          markBootReady(url);
+          resolve();
+        };
 
-      const onError = () => {
-        markLoaded(url);
-        markBootReady(url);
-      };
+        const onLoaded = () => {
+          finish();
+        };
 
-      video.addEventListener("loadeddata", onLoaded, { once: true });
-      video.addEventListener("canplaythrough", onLoaded, { once: true });
-      video.addEventListener("error", onError, { once: true });
-      video.load();
+        const onError = () => {
+          finish();
+        };
 
-      preloaderVideosRef.current.push(video);
-      cleanupVideos.push(() => {
-        video.removeEventListener("loadeddata", onLoaded);
-        video.removeEventListener("canplaythrough", onLoaded);
-        video.removeEventListener("error", onError);
-        video.src = "";
+        const timeoutId = window.setTimeout(() => {
+          finish();
+        }, 12000);
+
+        video.addEventListener("loadeddata", onLoaded, { once: true });
+        video.addEventListener("canplay", onLoaded, { once: true });
+        video.addEventListener("error", onError, { once: true });
         video.load();
+
+        preloaderVideosRef.current.push(video);
+        cleanupVideos.push(() => {
+          window.clearTimeout(timeoutId);
+          video.removeEventListener("loadeddata", onLoaded);
+          video.removeEventListener("canplay", onLoaded);
+          video.removeEventListener("error", onError);
+          video.src = "";
+          video.load();
+        });
       });
-    });
+
+    const runPreloadQueue = async () => {
+      const firstIndex = preloadableVideoUrls.findIndex((url) => url === initialUrl);
+      const orderedUrls =
+        firstIndex === -1
+          ? preloadableVideoUrls
+          : [
+              preloadableVideoUrls[firstIndex],
+              ...preloadableVideoUrls.filter((url) => url !== initialUrl),
+            ];
+
+      for (const url of orderedUrls) {
+        if (isCancelled) {
+          break;
+        }
+        await preloadVideo(url);
+      }
+    };
+
+    runPreloadQueue();
 
     return () => {
+      isCancelled = true;
       window.clearTimeout(fallbackTimer);
       cleanupVideos.forEach((cleanup) => cleanup());
       preloaderVideosRef.current = [];
     };
   }, [preloadableVideoUrls]);
+
+  const onEnterSite = () => {
+    setHasEntered(true);
+  };
 
   const onAdvance = () => {
     setStep((prev) => (prev + 1) % slides.length);
@@ -290,6 +327,17 @@ function App() {
         "--accent-b": currentSlide.accentB,
       }}
     >
+      {bootReady && !hasEntered ? (
+        <div className="intro-gate">
+          <div className="intro-gate__inner">
+            <p className="intro-gate__eyebrow">Для тебя</p>
+            <button className="intro-gate__button" onClick={onEnterSite} type="button">
+              МАСЯ, ЖМЯКНИ СЮДА
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {!bootReady ? (
         <div className="boot-loader">
           <div className="boot-loader__inner">
@@ -396,7 +444,7 @@ function App() {
             Можешь остаться послушать музыку,
             <span className="handwritten"> любим тебя</span>.
           </p>
-          <YandexMusicPlayer />
+          {hasEntered ? <YandexMusicPlayer /> : null}
         </div>
 
         <div className={`controls${isLastStep ? " final-controls" : ""}`}>
