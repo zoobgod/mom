@@ -32,7 +32,7 @@ const slides = [
     buttonLabel: "Начать",
     accentA: "#f2f2f2",
     accentB: "#d8d8d8",
-    videoFilter: "grayscale(100%) contrast(1.08)",
+    videoFilter: "saturate(1.05)",
     meshColors: ["#f8f8f8", "#ececec", "#e3e3e3", "#d9d9d9"],
   },
   {
