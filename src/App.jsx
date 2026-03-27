@@ -4,6 +4,20 @@ import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 
 const YANDEX_MUSIC_EMBED_URL = "https://music.yandex.com/iframe/playlist/zoomzoober/1033";
+
+// Resolve once at module level so it's ready synchronously in the click handler.
+const RESOLVED_MUSIC_URL = (() => {
+  const url = YANDEX_MUSIC_EMBED_URL.trim();
+  if (!url) return "";
+  try {
+    const u = new URL(url);
+    u.searchParams.set("autoplay", "1");
+    return u.toString();
+  } catch {
+    return url.includes("?") ? `${url}&autoplay=1` : `${url}?autoplay=1`;
+  }
+})();
+
 const VIDEO_LINKS = {
   welcome: "https://www.dropbox.com/scl/fi/ddf5llr1dknxlpocdsk4d/01-welcome_compressed.mp4?rlkey=048j762bdvgnrxxftj0ynhnwm&st=ix8twyap&raw=1",
   childhood: "https://www.dropbox.com/scl/fi/mfiutgiuic1tw8c6rxx8p/02-childhood_compressed.mp4?rlkey=huliarufpqy2z8h3tslwg8xme&st=clt9t2z2&raw=1",
@@ -153,38 +167,6 @@ function PlyrVideo({ src, filter, onError }) {
   );
 }
 
-function YandexMusicPlayer() {
-  const embedUrl = YANDEX_MUSIC_EMBED_URL.trim();
-  let resolvedEmbedUrl = "";
-
-  if (!embedUrl) {
-    return null;
-  }
-
-  try {
-    const url = new URL(embedUrl);
-    url.searchParams.set("autoplay", "1");
-    resolvedEmbedUrl = url.toString();
-  } catch {
-    resolvedEmbedUrl = embedUrl.includes("?")
-      ? `${embedUrl}&autoplay=1`
-      : `${embedUrl}?autoplay=1`;
-  }
-
-  return (
-    <div className="yandex-embed-shell">
-      <iframe
-        className="yandex-embed-frame"
-        src={resolvedEmbedUrl}
-        title="Yandex Music playlist"
-        frameBorder="0"
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen"
-        loading="eager"
-      />
-    </div>
-  );
-}
-
 function App() {
   const [step, setStep] = useState(0);
   const [hasEntered, setHasEntered] = useState(false);
@@ -192,6 +174,11 @@ function App() {
   const [bootReady, setBootReady] = useState(false);
   const [preloadProgress, setPreloadProgress] = useState(0);
   const preloaderVideosRef = useRef([]);
+  // Music: ref to the container div so we can inject the iframe synchronously
+  // inside the user-gesture handler. iOS Safari requires the iframe to be
+  // appended to the DOM within the same synchronous call stack as the tap.
+  const musicContainerRef = useRef(null);
+  const musicInjectedRef = useRef(false);
   const currentSlide = slides[step];
   const currentVideoUrl = currentSlide.videoUrl.trim();
 
@@ -291,6 +278,20 @@ function App() {
   }, [preloadableVideoUrls]);
 
   const onEnterSite = () => {
+    // iOS Safari: audio in cross-origin iframes is only allowed when the iframe
+    // is inserted into the DOM synchronously within a user-gesture handler.
+    // Any deferred approach (setTimeout, Promise, React state re-render) loses
+    // the gesture token and autoplay is silently blocked.
+    if (RESOLVED_MUSIC_URL && musicContainerRef.current && !musicInjectedRef.current) {
+      musicInjectedRef.current = true;
+      const iframe = document.createElement("iframe");
+      iframe.src = RESOLVED_MUSIC_URL;
+      iframe.className = "yandex-embed-frame";
+      iframe.title = "Yandex Music playlist";
+      iframe.setAttribute("frameborder", "0");
+      iframe.setAttribute("allow", "autoplay; clipboard-write; encrypted-media; fullscreen");
+      musicContainerRef.current.appendChild(iframe);
+    }
     setHasEntered(true);
   };
 
@@ -437,7 +438,9 @@ function App() {
             Можешь остаться послушать музыку,
             <span className="handwritten"> любим тебя</span>.
           </p>
-          {hasEntered && <YandexMusicPlayer />}
+          {/* Container is always in the DOM. The iframe is injected synchronously
+              inside onEnterSite so iOS Safari's autoplay gesture token is preserved. */}
+          <div ref={musicContainerRef} className="yandex-embed-shell" />
         </div>
 
         <div className={`controls${isLastStep ? " final-controls" : ""}`}>
