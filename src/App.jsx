@@ -5,8 +5,13 @@ import "plyr/dist/plyr.css";
 
 const YANDEX_MUSIC_EMBED_URL = "https://music.yandex.com/iframe/playlist/zoomzoober/1033";
 
-// Resolve once at module level so it's ready synchronously in the click handler.
-const RESOLVED_MUSIC_URL = (() => {
+// Gate embed: no autoplay — user taps play on the real player widget.
+// iOS Safari allows audio because the gesture is INSIDE the iframe itself.
+const GATE_MUSIC_URL = YANDEX_MUSIC_EMBED_URL.trim();
+
+// Final embed: autoplay=1 — injected synchronously inside the "Войти" gesture handler.
+// iOS Safari propagates user-activation to iframes created synchronously in a gesture.
+const AUTOPLAY_MUSIC_URL = (() => {
   const url = YANDEX_MUSIC_EMBED_URL.trim();
   if (!url) return "";
   try {
@@ -173,12 +178,15 @@ function App() {
   const [videoFailed, setVideoFailed] = useState({});
   const [bootReady, setBootReady] = useState(false);
   const [preloadProgress, setPreloadProgress] = useState(0);
+  // Shown after a short delay — nudges user to tap play on the embed first
+  const [showEnterButton, setShowEnterButton] = useState(false);
+
   const preloaderVideosRef = useRef([]);
-  // Music: ref to the container div so we can inject the iframe synchronously
-  // inside the user-gesture handler. iOS Safari requires the iframe to be
-  // appended to the DOM within the same synchronous call stack as the tap.
-  const musicContainerRef = useRef(null);
-  const musicInjectedRef = useRef(false);
+  // Container for the final-slide iframe. Injected synchronously in onEnterSite
+  // so iOS Safari's user-activation token (from the "Войти" tap) propagates to it.
+  const musicFinalRef = useRef(null);
+  const musicFinalInjectedRef = useRef(false);
+
   const currentSlide = slides[step];
   const currentVideoUrl = currentSlide.videoUrl.trim();
 
@@ -191,6 +199,7 @@ function App() {
     ? Math.round((preloadProgress / preloadableVideoUrls.length) * 100)
     : 100;
 
+  // Video preloading
   useEffect(() => {
     let isCancelled = false;
     const cleanupVideos = [];
@@ -277,20 +286,26 @@ function App() {
     };
   }, [preloadableVideoUrls]);
 
+  // Delay showing the "Войти" button so user sees and interacts with the player first
+  useEffect(() => {
+    if (!bootReady) return undefined;
+    const timer = window.setTimeout(() => setShowEnterButton(true), 2200);
+    return () => window.clearTimeout(timer);
+  }, [bootReady]);
+
   const onEnterSite = () => {
-    // iOS Safari: audio in cross-origin iframes is only allowed when the iframe
-    // is inserted into the DOM synchronously within a user-gesture handler.
-    // Any deferred approach (setTimeout, Promise, React state re-render) loses
-    // the gesture token and autoplay is silently blocked.
-    if (RESOLVED_MUSIC_URL && musicContainerRef.current && !musicInjectedRef.current) {
-      musicInjectedRef.current = true;
+    // Inject the final-slide iframe synchronously within this user-gesture handler.
+    // iOS Safari propagates user-activation to cross-origin iframes created
+    // synchronously inside a touch/click handler — so ?autoplay=1 will work.
+    if (AUTOPLAY_MUSIC_URL && musicFinalRef.current && !musicFinalInjectedRef.current) {
+      musicFinalInjectedRef.current = true;
       const iframe = document.createElement("iframe");
-      iframe.src = RESOLVED_MUSIC_URL;
+      iframe.src = AUTOPLAY_MUSIC_URL;
       iframe.className = "yandex-embed-frame";
       iframe.title = "Yandex Music playlist";
       iframe.setAttribute("frameborder", "0");
       iframe.setAttribute("allow", "autoplay; clipboard-write; encrypted-media; fullscreen");
-      musicContainerRef.current.appendChild(iframe);
+      musicFinalRef.current.appendChild(iframe);
     }
     setHasEntered(true);
   };
@@ -299,9 +314,11 @@ function App() {
     setStep((prev) => (prev + 1) % slides.length);
   };
 
-  // Progress dots for step indicator
   const stepDots = slides.map((s, i) => (
-    <span key={s.id} className={`step-dot${i === step ? " active" : ""}${i < step ? " done" : ""}`} />
+    <span
+      key={s.id}
+      className={`step-dot${i === step ? " active" : ""}${i < step ? " done" : ""}`}
+    />
   ));
 
   return (
@@ -313,55 +330,118 @@ function App() {
       }}
     >
       {/* Loading screen */}
-      {!bootReady && (
-        <motion.div
-          className="boot-loader"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="boot-loader__inner">
-            <div className="boot-loader__icon">
-              <motion.span
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              />
+      <AnimatePresence>
+        {!bootReady && (
+          <motion.div
+            className="boot-loader"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+          >
+            <div className="boot-loader__inner">
+              <div className="boot-loader__icon">
+                <motion.span
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                />
+              </div>
+              <motion.p
+                className="boot-loader__meta"
+                animate={{ opacity: [0.4, 0.9, 0.4] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                {preloadPercent}%
+              </motion.p>
             </div>
-            <p className="boot-loader__meta">{preloadPercent}%</p>
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Intro gate */}
+      {/* Intro gate — shows the Yandex Music embed so user taps play directly */}
       <AnimatePresence>
         {bootReady && !hasEntered && (
           <motion.div
             className="intro-gate"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.05 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ opacity: 0, scale: 1.04 }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="intro-gate__inner">
               <motion.p
                 className="intro-gate__eyebrow"
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
+                transition={{ delay: 0.15, duration: 0.5 }}
               >
                 Для тебя
               </motion.p>
-              <motion.button
-                className="intro-gate__button"
-                onClick={onEnterSite}
-                type="button"
-                initial={{ opacity: 0, y: 20 }}
+
+              {/* Music player + handwritten annotation */}
+              <motion.div
+                className="gate-player-wrap"
+                initial={{ opacity: 0, y: 22 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35, duration: 0.5 }}
-                whileTap={{ scale: 0.97 }}
+                transition={{ delay: 0.28, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
               >
-                Мася, жмякни сюда
-              </motion.button>
+                {/*
+                  Handwritten annotation — pointer-events: none so taps pass through
+                  to the iframe. The SVG arrow curves from the label toward the
+                  left side of the embed where the track play buttons live.
+                */}
+                <div className="gate-annotation" aria-hidden="true">
+                  <span className="gate-annotation__text">Мася, жмякни сюда</span>
+                  <svg
+                    className="gate-annotation__arrow"
+                    viewBox="0 0 100 65"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M 88,8 C 68,4 28,18 12,50"
+                      stroke="rgba(255,255,255,0.68)"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M 4,44 L 12,50 L 19,43"
+                      stroke="rgba(255,255,255,0.68)"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+
+                <div className="yandex-embed-shell">
+                  <iframe
+                    className="yandex-embed-frame"
+                    src={GATE_MUSIC_URL}
+                    title="Yandex Music playlist"
+                    frameBorder="0"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen"
+                    loading="eager"
+                  />
+                </div>
+              </motion.div>
+
+              {/* Enter button — delayed so user sees and interacts with the player first */}
+              <AnimatePresence>
+                {showEnterButton && (
+                  <motion.button
+                    className="gate-enter-btn"
+                    onClick={onEnterSite}
+                    type="button"
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Войти
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
@@ -418,13 +498,11 @@ function App() {
             className="text-content"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
+            exit={{ opacity: 0, y: -14 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
             <p className="eyebrow">{currentSlide.eyebrow}</p>
-
             <h1 className="title">{currentSlide.heading}</h1>
-
             <div className="copy">
               {currentSlide.lines.map((line) => (
                 <p key={line}>{line}</p>
@@ -438,9 +516,12 @@ function App() {
             Можешь остаться послушать музыку,
             <span className="handwritten"> любим тебя</span>.
           </p>
-          {/* Container is always in the DOM. The iframe is injected synchronously
-              inside onEnterSite so iOS Safari's autoplay gesture token is preserved. */}
-          <div ref={musicContainerRef} className="yandex-embed-shell" />
+          {/*
+            musicFinalRef container — always in the DOM (playlist-panel is always rendered,
+            just CSS-hidden). The iframe is injected synchronously in onEnterSite so it
+            carries iOS Safari's user-activation from the "Войти" tap.
+          */}
+          <div ref={musicFinalRef} className="yandex-embed-shell" />
         </div>
 
         <div className={`controls${isLastStep ? " final-controls" : ""}`}>
@@ -451,7 +532,7 @@ function App() {
         </div>
       </section>
 
-      {/* Video panel - only render videos AFTER user enters so autoplay works */}
+      {/* Video panel — only rendered after user enters so autoplay policy is satisfied */}
       <section className="video-pane">
         <AnimatePresence mode="wait">
           <motion.div
@@ -460,7 +541,7 @@ function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.65 }}
           >
             {hasEntered && currentVideoUrl ? (
               <PlyrVideo
