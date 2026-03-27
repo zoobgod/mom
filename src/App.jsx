@@ -316,20 +316,18 @@ function App() {
     float.style.left = `${r.left}px`;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Gate phase: position ONCE immediately, then ONCE more after the entrance
-  // animation settles (~960ms). No rAF loop — two discrete writes, then stop.
+  // Gate phase: reposition on every layout-changing dep (bootReady and
+  // showEnterButton). When the "Войти" button appears at t=2200ms it adds
+  // ~73px to the inner div and shifts the placeholder up ~37px — adding
+  // showEnterButton as a dep catches this exactly when the shift happens.
+  // No timer needed; the 960ms corrective timer fired before the shift.
   useEffect(() => {
     if (!bootReady || hasEntered) return undefined;
     musicStateRef.current = "gate";
     const float = musicFloatRef.current;
     if (float) float.className = "music-float music-float--gate";
     placeOverElement(gatePlaceholderRef.current);
-    const t = window.setTimeout(
-      () => placeOverElement(gatePlaceholderRef.current),
-      960,
-    );
-    return () => window.clearTimeout(t);
-  }, [bootReady, hasEntered, placeOverElement]);
+  }, [bootReady, hasEntered, showEnterButton, placeOverElement]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hidden phase: CSS class change ONLY — zero inline style writes.
   // .music-float--hidden declares top:-9999px !important in CSS, which

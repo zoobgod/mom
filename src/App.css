@@ -169,10 +169,15 @@ button,
     border-radius 0.55s ease;
 }
 
-/* Gate: z-index/pointer-events come from CSS; top/left/size set by JS once */
+/* Gate: z-index/pointer-events come from CSS; top/left/size set by JS.
+   transition:none keeps both placeOverElement writes instant — the corrective
+   write at t=960ms must snap, not animate (boot loader may have faded by then).
+   Gate→hidden still animates because gaining a non-zero transition-duration
+   triggers a fresh transition from the current gate position. */
 .music-float--gate {
   z-index: 20;
   pointer-events: auto;
+  transition: none;
 }
 
 /* Hidden: mini-player in the top-right of the video area, stacked below the
