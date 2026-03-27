@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 
-// Paste the iframe `src` value from Yandex Music: Share -> HTML code.
 const YANDEX_MUSIC_EMBED_URL = "https://music.yandex.com/iframe/playlist/zoomzoober/1033";
 const VIDEO_LINKS = {
   welcome: "https://www.dropbox.com/scl/fi/ddf5llr1dknxlpocdsk4d/01-welcome_compressed.mp4?rlkey=048j762bdvgnrxxftj0ynhnwm&st=ix8twyap&raw=1",
@@ -16,7 +15,7 @@ const slides = [
   {
     id: "welcome",
     videoKey: "welcome",
-    eyebrow: "Шаг 01",
+    eyebrow: "01",
     heading: (
       <>
         С днем рождения, <span className="handwritten">Масечка</span>.
@@ -25,20 +24,18 @@ const slides = [
     lines: [
       "Мы тебя очень любим. Ты наше все.",
       "Спасибо тебе за жизнь, за любовь, за тепло, которым ты наполнила наш мир.",
-      "Сегодня все это только для тебя.",
     ],
     videoUrl: VIDEO_LINKS.welcome,
     buttonLabel: "Начать",
     accentA: "#f2f2f2",
     accentB: "#d8d8d8",
     videoFilter: "grayscale(100%) contrast(1.08)",
-    meshScale: 0.9,
     meshColors: ["#f8f8f8", "#ececec", "#e3e3e3", "#d9d9d9"],
   },
   {
     id: "childhood",
     videoKey: "childhood",
-    eyebrow: "Шаг 02",
+    eyebrow: "02",
     heading: (
       <>
         Ты самая <span className="handwritten">невероятная</span>.
@@ -54,13 +51,12 @@ const slides = [
     accentA: "#28b8ff",
     accentB: "#16e085",
     videoFilter: "saturate(1.08)",
-    meshScale: 1,
     meshColors: ["#88e0ff", "#53f0c4", "#41a4ff", "#f5ffe9"],
   },
   {
     id: "strength",
     videoKey: "strength",
-    eyebrow: "Шаг 03",
+    eyebrow: "03",
     heading: (
       <>
         Ты наш дом и наша <span className="handwritten">сила</span>.
@@ -76,13 +72,12 @@ const slides = [
     accentA: "#3f7bff",
     accentB: "#ffb703",
     videoFilter: "saturate(1.1)",
-    meshScale: 1.08,
     meshColors: ["#6f9dff", "#ffd56a", "#5bc5ff", "#ff9f68"],
   },
   {
     id: "final",
     videoKey: "final",
-    eyebrow: "Шаг 04",
+    eyebrow: "04",
     heading: (
       <>
         С днем рождения, наша <span className="handwritten">любимая</span>.
@@ -98,7 +93,6 @@ const slides = [
     accentA: "#27d3ff",
     accentB: "#ff5d8f",
     videoFilter: "saturate(1.18)",
-    meshScale: 1.16,
     meshColors: ["#5be6ff", "#ff83aa", "#90fff3", "#e8f0ff"],
   },
 ];
@@ -164,15 +158,7 @@ function YandexMusicPlayer() {
   let resolvedEmbedUrl = "";
 
   if (!embedUrl) {
-    return (
-      <div className="playlist-placeholder">
-        <p>Вставь ссылку на embed-плеер Яндекс Музыки сюда:</p>
-        <code><iframe frameborder="0" allow="clipboard-write" style="border:none;width:614px;height:556px;" width="614" height="556" src="https://music.yandex.com/iframe/playlist/zoomzoober/1033">Слушайте <a href="https://music.yandex.com/playlists/94ec9e86-506e-cbcf-9fd6-3e13653a7d94?utm_source=web&utm_medium=copy_link">have a fantastic day babe</a> — <a href="https://music.yandex.com/users/zoomzoober">Никита Иванов</a> на Яндекс Музыке</iframe></code>
-        <p className="playlist-help">
-          В `src/App.jsx` вставь значение `src` из Share → HTML code.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   try {
@@ -210,10 +196,6 @@ function App() {
   const currentVideoUrl = currentSlide.videoUrl.trim();
 
   const isLastStep = step === slides.length - 1;
-  const stepText = useMemo(
-    () => `${String(step + 1).padStart(2, "0")} / ${String(slides.length).padStart(2, "0")}`,
-    [step],
-  );
   const preloadableVideoUrls = useMemo(
     () => [...new Set(slides.map((slide) => slide.videoUrl.trim()).filter(Boolean))],
     [],
@@ -234,18 +216,13 @@ function App() {
     }
 
     const markLoaded = (url) => {
-      if (loadedUrls.has(url)) {
-        return;
-      }
-
+      if (loadedUrls.has(url)) return;
       loadedUrls.add(url);
       setPreloadProgress(loadedUrls.size);
     };
 
     const markBootReady = (url) => {
-      if (url === initialUrl) {
-        setBootReady(true);
-      }
+      if (url === initialUrl) setBootReady(true);
     };
 
     const fallbackTimer = window.setTimeout(() => {
@@ -266,17 +243,10 @@ function App() {
           resolve();
         };
 
-        const onLoaded = () => {
-          finish();
-        };
+        const onLoaded = () => finish();
+        const onError = () => finish();
 
-        const onError = () => {
-          finish();
-        };
-
-        const timeoutId = window.setTimeout(() => {
-          finish();
-        }, 12000);
+        const timeoutId = window.setTimeout(() => finish(), 12000);
 
         video.addEventListener("loadeddata", onLoaded, { once: true });
         video.addEventListener("canplay", onLoaded, { once: true });
@@ -305,9 +275,7 @@ function App() {
             ];
 
       for (const url of orderedUrls) {
-        if (isCancelled) {
-          break;
-        }
+        if (isCancelled) break;
         await preloadVideo(url);
       }
     };
@@ -330,6 +298,11 @@ function App() {
     setStep((prev) => (prev + 1) % slides.length);
   };
 
+  // Progress dots for step indicator
+  const stepDots = slides.map((s, i) => (
+    <span key={s.id} className={`step-dot${i === step ? " active" : ""}${i < step ? " done" : ""}`} />
+  ));
+
   return (
     <div
       className="page"
@@ -338,40 +311,68 @@ function App() {
         "--accent-b": currentSlide.accentB,
       }}
     >
-      {bootReady && !hasEntered ? (
-        <div className="intro-gate">
-          <div className="intro-gate__inner">
-            <p className="intro-gate__eyebrow">Для тебя</p>
-            <button className="intro-gate__button" onClick={onEnterSite} type="button">
-              МАСЯ, ЖМЯКНИ СЮДА
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {!bootReady ? (
-        <div className="boot-loader">
+      {/* Loading screen */}
+      {!bootReady && (
+        <motion.div
+          className="boot-loader"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+        >
           <div className="boot-loader__inner">
-            <p className="boot-loader__eyebrow">Подготавливаем воспоминания</p>
-            <h1 className="boot-loader__title">Загружаем видео для плавного просмотра</h1>
-            <div className="boot-loader__bar">
+            <div className="boot-loader__icon">
               <motion.span
-                className="boot-loader__bar-fill"
-                animate={{ width: `${preloadPercent}%` }}
-                transition={{ duration: 0.45, ease: "easeOut" }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               />
             </div>
             <p className="boot-loader__meta">{preloadPercent}%</p>
           </div>
-        </div>
-      ) : null}
+        </motion.div>
+      )}
 
+      {/* Intro gate */}
+      <AnimatePresence>
+        {bootReady && !hasEntered && (
+          <motion.div
+            className="intro-gate"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="intro-gate__inner">
+              <motion.p
+                className="intro-gate__eyebrow"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+              >
+                Для тебя
+              </motion.p>
+              <motion.button
+                className="intro-gate__button"
+                onClick={onEnterSite}
+                type="button"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35, duration: 0.5 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                Мася, жмякни сюда
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mesh background */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide.id}
           className="color-burst"
           initial={{ opacity: 0, scale: 0.7 }}
-          animate={{ opacity: 0.45, scale: 1.1 }}
+          animate={{ opacity: 0.35, scale: 1.1 }}
           exit={{ opacity: 0, scale: 1.2 }}
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
         />
@@ -380,8 +381,6 @@ function App() {
       <div className="mesh-layer" aria-hidden="true">
         {meshOrbs.map((orb, index) => {
           const color = currentSlide.meshColors[index % currentSlide.meshColors.length];
-          const nextScale = currentSlide.meshScale * (index % 2 === 0 ? 1 : 0.88);
-
           return (
             <motion.span
               key={orb.id}
@@ -391,9 +390,9 @@ function App() {
                 x: [-orb.driftX, orb.driftX, -orb.driftX * 0.45, -orb.driftX],
                 y: [-orb.driftY, orb.driftY * 0.7, orb.driftY, -orb.driftY],
                 scale: [0.92, 1.03, 0.97, 1.01],
-                opacity: [0.18, 0.38, 0.24, 0.33],
-                width: orb.size * nextScale,
-                height: orb.size * nextScale,
+                opacity: [0.12, 0.28, 0.18, 0.24],
+                width: orb.size,
+                height: orb.size,
                 backgroundColor: color,
               }}
               transition={{
@@ -410,43 +409,26 @@ function App() {
         })}
       </div>
 
+      {/* Text panel */}
       <section className={`text-pane${isLastStep ? " has-playlist" : ""}`}>
-        <motion.p
-          key={`eyebrow-${currentSlide.id}`}
-          className="eyebrow"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.35 }}
-        >
-          {currentSlide.eyebrow}
-        </motion.p>
-
-        <AnimatePresence mode="wait">
-          <motion.h1
-            key={`title-${currentSlide.id}`}
-            className="title"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.45, ease: "easeOut" }}
-          >
-            {currentSlide.heading}
-          </motion.h1>
-        </AnimatePresence>
-
         <AnimatePresence mode="wait">
           <motion.div
-            key={`body-${currentSlide.id}`}
-            className="copy"
-            initial={{ opacity: 0, y: 16 }}
+            key={`content-${currentSlide.id}`}
+            className="text-content"
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -14 }}
-            transition={{ duration: 0.45, delay: 0.05 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            {currentSlide.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
+            <p className="eyebrow">{currentSlide.eyebrow}</p>
+
+            <h1 className="title">{currentSlide.heading}</h1>
+
+            <div className="copy">
+              {currentSlide.lines.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
           </motion.div>
         </AnimatePresence>
 
@@ -455,19 +437,18 @@ function App() {
             Можешь остаться послушать музыку,
             <span className="handwritten"> любим тебя</span>.
           </p>
-          {hasEntered ? <YandexMusicPlayer /> : null}
+          {hasEntered && <YandexMusicPlayer />}
         </div>
 
         <div className={`controls${isLastStep ? " final-controls" : ""}`}>
           <button className="advance" onClick={onAdvance} type="button">
             {currentSlide.buttonLabel}
           </button>
-
-          <p className="step-indicator">{stepText}</p>
+          <div className="step-dots">{stepDots}</div>
         </div>
-
       </section>
 
+      {/* Video panel - only render videos AFTER user enters so autoplay works */}
       <section className="video-pane">
         <AnimatePresence mode="wait">
           <motion.div
@@ -478,7 +459,7 @@ function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
           >
-            {currentVideoUrl ? (
+            {hasEntered && currentVideoUrl ? (
               <PlyrVideo
                 src={currentVideoUrl}
                 filter={currentSlide.videoFilter}
@@ -486,27 +467,16 @@ function App() {
                   setVideoFailed((prev) => ({ ...prev, [currentSlide.id]: true }))
                 }
               />
-            ) : (
-              <div className="video-fallback video-link-placeholder">
-                <p>Вставь ссылку на видео сюда:</p>
-                <code>{`VIDEO_LINKS.${currentSlide.videoKey}`}</code>
-                <p className="video-help">
-                  Файл для редактирования: `src/App.jsx`
-                </p>
-              </div>
-            )}
+            ) : null}
           </motion.div>
         </AnimatePresence>
 
-        {currentVideoUrl && videoFailed[currentSlide.id] ? (
+        {currentVideoUrl && videoFailed[currentSlide.id] && (
           <div className="video-fallback">
             <p>Проверь ссылку на видео:</p>
             <code>{currentVideoUrl}</code>
-            <p className="video-help">
-              Она должна вести прямо на видеофайл и открываться без блокировки.
-            </p>
           </div>
-        ) : null}
+        )}
       </section>
     </div>
   );
