@@ -6,10 +6,10 @@ import "plyr/dist/plyr.css";
 // Paste the iframe `src` value from Yandex Music: Share -> HTML code.
 const YANDEX_MUSIC_EMBED_URL = "https://music.yandex.com/iframe/playlist/zoomzoober/1033";
 const VIDEO_LINKS = {
-  welcome: "https://www.dropbox.com/scl/fi/7pj31uvzpliv55uwezvj5/01-welcome.mp4?rlkey=r32vazgq3aumy0om7g42zql6x&st=ed7as0m9&raw=1",
-  childhood: "https://www.dropbox.com/scl/fi/txxm759tukn9vjv4bnz6o/02-childhood.mp4?rlkey=xieanyf2wy07pmj8xlq1bjzf6&st=imcu2v50&raw=1",
-  strength: "https://www.dropbox.com/scl/fi/qs4ctfquh81pnf2wlw07b/03-strength.mp4?rlkey=dk3uq3mim60m6otfirkugifdm&st=5pll8uk7&raw=1",
-  final: "https://www.dropbox.com/scl/fi/4anra6kkghlakk7jdg2b7/04-final-main.mp4?rlkey=r2w3pmchm1dv4rz2mk5bktxyh&st=vbwsyh81&raw=1",
+  welcome: "https://www.dropbox.com/scl/fi/ddf5llr1dknxlpocdsk4d/01-welcome_compressed.mp4?rlkey=048j762bdvgnrxxftj0ynhnwm&st=ix8twyap&raw=1",
+  childhood: "https://www.dropbox.com/scl/fi/mfiutgiuic1tw8c6rxx8p/02-childhood_compressed.mp4?rlkey=huliarufpqy2z8h3tslwg8xme&st=clt9t2z2&raw=1",
+  strength: "https://www.dropbox.com/scl/fi/s6sm7h84t5n888bltwq0d/03-strength_compressed.mp4?rlkey=rs77y7z44irbh3zlryo9krby3&st=wghicn5x&raw=1",
+  final: "https://www.dropbox.com/scl/fi/rgu4wzhkgxaszbnmh7mer/04-final-main_compressed.mp4?rlkey=rms66btrpmt2zykdeb9casi0x&st=oieq36ye&raw=1",
 };
 
 const slides = [
