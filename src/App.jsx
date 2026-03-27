@@ -5,10 +5,10 @@ import "plyr/dist/plyr.css";
 
 const SPOTIFY_PLAYLIST_URI = "spotify:playlist:4UAjOazfnYv008ejMGDVSD";
 const VIDEO_LINKS = {
-  welcome: "",
-  childhood: "",
-  strength: "",
-  final: "",
+  welcome: "https://www.dropbox.com/scl/fi/7pj31uvzpliv55uwezvj5/01-welcome.mp4?rlkey=r32vazgq3aumy0om7g42zql6x&st=ed7as0m9&raw=1",
+  childhood: "https://www.dropbox.com/scl/fi/txxm759tukn9vjv4bnz6o/02-childhood.mp4?rlkey=xieanyf2wy07pmj8xlq1bjzf6&st=imcu2v50&raw=1",
+  strength: "https://www.dropbox.com/scl/fi/qs4ctfquh81pnf2wlw07b/03-strength.mp4?rlkey=dk3uq3mim60m6otfirkugifdm&st=5pll8uk7&raw=1",
+  final: "https://www.dropbox.com/scl/fi/4anra6kkghlakk7jdg2b7/04-final-main.mp4?rlkey=r2w3pmchm1dv4rz2mk5bktxyh&st=vbwsyh81&raw=1",
 };
 
 const slides = [
