@@ -108,8 +108,9 @@ const meshOrbs = [
   { id: "orb-5", x: "24%", y: "38%", size: 260, driftX: 20, driftY: -18, duration: 16 },
 ];
 
-function PlyrVideo({ src, filter, onError }) {
+function PlyrVideo({ src, filter, muted, onError }) {
   const videoRef = useRef(null);
+  const playerRef = useRef(null);
 
   useEffect(() => {
     if (!videoRef.current) return undefined;
@@ -129,9 +130,18 @@ function PlyrVideo({ src, filter, onError }) {
     player.muted = true;
     player.loop = true;
     player.play().catch(() => {});
+    playerRef.current = player;
 
-    return () => { player.destroy(); };
+    return () => { player.destroy(); playerRef.current = null; };
   }, []);
+
+  // Sync muted prop to Plyr instance imperatively
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    player.muted = muted;
+    if (!muted) player.volume = 1;
+  }, [muted]);
 
   return (
     <div className="memory-player">
@@ -159,6 +169,7 @@ function App() {
   const [bootReady, setBootReady] = useState(false);
   const [preloadProgress, setPreloadProgress] = useState(0);
   const [showEnterButton, setShowEnterButton] = useState(false);
+  const [videoMuted, setVideoMuted] = useState(true);
 
   const preloaderVideosRef = useRef([]);
 
@@ -174,6 +185,9 @@ function App() {
   const finalPlaceholderRef = useRef(null);
   // Mutable ref so positionMusicFloat can read it without stale-closure issues
   const musicStateRef = useRef("gate");
+  // Once the float is sized from the gate placeholder, we never change
+  // width/height again — iOS Safari may restart media on container resize.
+  const floatSizedRef = useRef(false);
 
   const currentSlide = slides[step];
   const currentVideoUrl = currentSlide.videoUrl.trim();
@@ -263,49 +277,56 @@ function App() {
 
   // ── Music float positioning ────────────────────────────
   // Reads refs only — no stale-closure issues, empty deps intentional.
+  //
+  // CRITICAL iOS RULE: once audio is playing, NEVER change width/height/opacity
+  // on the iframe container — WebKit interprets that as a media layer change and
+  // may restart/glitch playback. We set the size ONCE (floatSizedRef) from the
+  // gate placeholder, then only ever change top/left to reposition.
   const positionMusicFloat = useCallback(() => {
     const float = musicFloatRef.current;
     if (!float) return;
 
     const state = musicStateRef.current;
-    // Update CSS class so annotation visibility is controlled by CSS
     float.className = `music-float music-float--${state}`;
 
-    const placeOver = (el, zIndex) => {
-      if (!el) return false;
-      const r = el.getBoundingClientRect();
-      if (r.width < 2 || r.height < 2) return false;
-      Object.assign(float.style, {
-        top: `${r.top}px`,
-        left: `${r.left}px`,
-        width: `${r.width}px`,
-        height: `${r.height}px`,
-        zIndex: String(zIndex),
-        opacity: "1",
-        pointerEvents: "auto",
-      });
-      return true;
-    };
-
     if (state === "gate") {
-      placeOver(gatePlaceholderRef.current, 20);
+      const el = gatePlaceholderRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return;
+      // Set size ONCE — never change after this point
+      if (!floatSizedRef.current) {
+        float.style.width = `${r.width}px`;
+        float.style.height = `${r.height}px`;
+        float.style.pointerEvents = "auto";
+        float.style.zIndex = "20";
+        floatSizedRef.current = true;
+      }
+      // Only top/left updates from here on
+      float.style.top = `${r.top}px`;
+      float.style.left = `${r.left}px`;
     } else if (state === "final") {
-      placeOver(finalPlaceholderRef.current, 6);
+      const el = finalPlaceholderRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return;
+      // Resize to match the final panel — audio has been stable for a while
+      float.style.top = `${r.top}px`;
+      float.style.left = `${r.left}px`;
+      float.style.width = `${r.width}px`;
+      float.style.height = `${r.height}px`;
+      float.style.zIndex = "6";
+      float.style.pointerEvents = "auto";
     } else {
-      // Hidden — iframe stays in DOM, audio keeps playing
-      Object.assign(float.style, {
-        top: "-9999px",
-        left: "-9999px",
-        width: "1px",
-        height: "1px",
-        opacity: "0",
-        pointerEvents: "none",
-        zIndex: "1",
-      });
+      // HIDDEN — audio keeps playing; ONLY move off-screen, never resize
+      float.style.top = "-9999px";
+      float.style.left = "0";
+      float.style.zIndex = "1";
+      float.style.pointerEvents = "none";
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Gate phase: rAF loop so float tracks the entrance animation of the placeholder
+  // Gate phase: rAF loop tracks entrance animation (placeholder y: 22→0)
   useEffect(() => {
     if (!bootReady || hasEntered) return undefined;
     musicStateRef.current = "gate";
@@ -315,14 +336,14 @@ function App() {
     return () => cancelAnimationFrame(rafId);
   }, [bootReady, hasEntered, positionMusicFloat]);
 
-  // Hidden phase (entered, not on final slide)
+  // Hidden phase (entered, not on final slide) — safe: only moves top/left
   useEffect(() => {
     if (!hasEntered || isLastStep) return;
     musicStateRef.current = "hidden";
     positionMusicFloat();
   }, [hasEntered, isLastStep, positionMusicFloat]);
 
-  // Final slide: rAF loop for the panel-open animation, then scroll tracking
+  // Final slide: rAF burst during panel-open CSS transition, then scroll tracking
   useEffect(() => {
     if (!hasEntered || !isLastStep) return undefined;
     musicStateRef.current = "final";
@@ -595,6 +616,7 @@ function App() {
               <PlyrVideo
                 src={currentVideoUrl}
                 filter={currentSlide.videoFilter}
+                muted={videoMuted}
                 onError={() =>
                   setVideoFailed((prev) => ({ ...prev, [currentSlide.id]: true }))
                 }
@@ -602,6 +624,29 @@ function App() {
             ) : null}
           </motion.div>
         </AnimatePresence>
+
+        {hasEntered && (
+          <button
+            className="video-mute-btn"
+            onClick={() => setVideoMuted((v) => !v)}
+            type="button"
+            aria-label={videoMuted ? "Включить звук" : "Выключить звук"}
+          >
+            {videoMuted ? (
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" />
+                <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
+        )}
 
         {currentVideoUrl && videoFailed[currentSlide.id] && (
           <div className="video-fallback">
