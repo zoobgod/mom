@@ -46,6 +46,72 @@ select {
   transition: background 700ms ease;
 }
 
+.boot-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding:
+    calc(1.5rem + env(safe-area-inset-top))
+    1.25rem
+    calc(1.5rem + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 20% 18%, color-mix(in srgb, var(--accent-a), transparent 84%) 0%, transparent 38%),
+    radial-gradient(circle at 80% 80%, color-mix(in srgb, var(--accent-b), transparent 88%) 0%, transparent 40%),
+    rgba(0, 0, 0, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.boot-loader__inner {
+  width: min(100%, 24rem);
+  text-align: center;
+}
+
+.boot-loader__eyebrow {
+  margin: 0 0 0.9rem;
+  font: 600 0.72rem/1.4 "Manrope", sans-serif;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.boot-loader__title {
+  margin: 0;
+  font: 600 clamp(2rem, 9vw, 3rem) / 1 "Cormorant Garamond", serif;
+  color: #fff;
+}
+
+.boot-loader__bar {
+  margin-top: 1.3rem;
+  width: 100%;
+  height: 0.36rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.boot-loader__bar-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent-a), #ffffff 25%) 0%,
+    color-mix(in srgb, var(--accent-b), #ffffff 18%) 100%
+  );
+  box-shadow: 0 0 24px -6px color-mix(in srgb, var(--accent-a), transparent 22%);
+}
+
+.boot-loader__meta {
+  margin: 0.9rem 0 0;
+  font: 600 0.84rem/1 "Manrope", sans-serif;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.74);
+}
+
 .color-burst {
   position: absolute;
   inset: -30%;
@@ -350,7 +416,8 @@ select {
   color: rgba(255, 255, 255, 0.95);
 }
 
-.spotify-embed {
+.yandex-embed-shell,
+.playlist-placeholder {
   width: 100%;
   min-height: 336px;
   border-radius: 22px;
@@ -365,7 +432,32 @@ select {
   -webkit-backdrop-filter: blur(14px);
 }
 
-.spotify-embed iframe {
+.playlist-placeholder {
+  padding: 1.15rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  justify-content: center;
+}
+
+.playlist-placeholder p,
+.playlist-help {
+  margin: 0;
+  font: 500 0.92rem/1.45 "Manrope", sans-serif;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.playlist-placeholder code {
+  display: inline-block;
+  width: fit-content;
+  padding: 0.45rem 0.62rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font: 600 0.76rem/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: #fff;
+}
+
+.yandex-embed-frame {
   display: block;
   width: 100%;
   min-height: 336px;
@@ -520,8 +612,9 @@ select {
     max-height: 40rem;
   }
 
-  .spotify-embed,
-  .spotify-embed iframe {
+  .yandex-embed-shell,
+  .playlist-placeholder,
+  .yandex-embed-frame {
     min-height: 352px;
   }
 }

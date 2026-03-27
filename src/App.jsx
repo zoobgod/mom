@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 
-const SPOTIFY_PLAYLIST_URI = "spotify:playlist:4UAjOazfnYv008ejMGDVSD";
+// Paste the iframe `src` value from Yandex Music: Share -> HTML code.
+const YANDEX_MUSIC_EMBED_URL = "";
 const VIDEO_LINKS = {
   welcome: "https://www.dropbox.com/scl/fi/7pj31uvzpliv55uwezvj5/01-welcome.mp4?rlkey=r32vazgq3aumy0om7g42zql6x&st=ed7as0m9&raw=1",
   childhood: "https://www.dropbox.com/scl/fi/txxm759tukn9vjv4bnz6o/02-childhood.mp4?rlkey=xieanyf2wy07pmj8xlq1bjzf6&st=imcu2v50&raw=1",
@@ -110,47 +111,6 @@ const meshOrbs = [
   { id: "orb-5", x: "24%", y: "38%", size: 260, driftX: 20, driftY: -18, duration: 16 },
 ];
 
-let spotifyIframeApiPromise;
-
-function loadSpotifyIframeApi() {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("Spotify iframe API requires a browser"));
-  }
-
-  if (window.SpotifyIframeApi) {
-    return Promise.resolve(window.SpotifyIframeApi);
-  }
-
-  if (spotifyIframeApiPromise) {
-    return spotifyIframeApiPromise;
-  }
-
-  spotifyIframeApiPromise = new Promise((resolve) => {
-    const previousReadyHandler = window.onSpotifyIframeApiReady;
-
-    window.onSpotifyIframeApiReady = (api) => {
-      window.SpotifyIframeApi = api;
-      if (typeof previousReadyHandler === "function") {
-        previousReadyHandler(api);
-      }
-      resolve(api);
-    };
-
-    const existingScript = document.querySelector(
-      'script[src="https://open.spotify.com/embed/iframe-api/v1"]',
-    );
-
-    if (!existingScript) {
-      const script = document.createElement("script");
-      script.src = "https://open.spotify.com/embed/iframe-api/v1";
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  });
-
-  return spotifyIframeApiPromise;
-}
-
 function PlyrVideo({ src, filter, onError }) {
   const videoRef = useRef(null);
 
@@ -199,73 +159,41 @@ function PlyrVideo({ src, filter, onError }) {
   );
 }
 
-function SpotifyPlaylist({ onControllerReady, onPlaybackStarted }) {
-  const embedRef = useRef(null);
-  const readyHandlerRef = useRef(onControllerReady);
-  const playbackHandlerRef = useRef(onPlaybackStarted);
+function YandexMusicPlayer() {
+  const embedUrl = YANDEX_MUSIC_EMBED_URL.trim();
 
-  useEffect(() => {
-    readyHandlerRef.current = onControllerReady;
-    playbackHandlerRef.current = onPlaybackStarted;
-  }, [onControllerReady, onPlaybackStarted]);
+  if (!embedUrl) {
+    return (
+      <div className="playlist-placeholder">
+        <p>Вставь ссылку на embed-плеер Яндекс Музыки сюда:</p>
+        <code>YANDEX_MUSIC_EMBED_URL</code>
+        <p className="playlist-help">
+          В `src/App.jsx` вставь значение `src` из Share → HTML code.
+        </p>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    let isActive = true;
-    let controller;
-
-    loadSpotifyIframeApi()
-      .then((api) => {
-        if (!isActive || !embedRef.current) {
-          return;
-        }
-
-        api.createController(
-          embedRef.current,
-          {
-            width: "100%",
-            height: "352",
-            uri: SPOTIFY_PLAYLIST_URI,
-          },
-          (embedController) => {
-            controller = embedController;
-
-            controller.addListener("ready", () => {
-              if (!isActive) {
-                return;
-              }
-              readyHandlerRef.current?.(controller);
-            });
-
-            controller.addListener("playback_started", () => {
-              if (!isActive) {
-                return;
-              }
-              playbackHandlerRef.current?.();
-            });
-          },
-        );
-      })
-      .catch(() => {});
-
-    return () => {
-      isActive = false;
-      if (controller) {
-        controller.destroy();
-      }
-    };
-  }, []);
-
-  return <div ref={embedRef} className="spotify-embed" />;
+  return (
+    <div className="yandex-embed-shell">
+      <iframe
+        className="yandex-embed-frame"
+        src={embedUrl}
+        title="Yandex Music playlist"
+        frameBorder="0"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen"
+        loading="eager"
+      />
+    </div>
+  );
 }
 
 function App() {
   const [step, setStep] = useState(0);
-  const [hasInteracted, setHasInteracted] = useState(false);
-  const [musicBlocked, setMusicBlocked] = useState(false);
   const [videoFailed, setVideoFailed] = useState({});
-  const spotifyControllerRef = useRef(null);
-  const playlistStartRequestedRef = useRef(false);
-  const playbackTimeoutRef = useRef(null);
+  const [bootReady, setBootReady] = useState(false);
+  const [preloadProgress, setPreloadProgress] = useState(0);
+  const preloaderVideosRef = useRef([]);
   const currentSlide = slides[step];
   const currentVideoUrl = currentSlide.videoUrl.trim();
 
@@ -274,62 +202,84 @@ function App() {
     () => `${String(step + 1).padStart(2, "0")} / ${String(slides.length).padStart(2, "0")}`,
     [step],
   );
+  const preloadableVideoUrls = useMemo(
+    () => [...new Set(slides.map((slide) => slide.videoUrl.trim()).filter(Boolean))],
+    [],
+  );
+  const preloadPercent = preloadableVideoUrls.length
+    ? Math.round((preloadProgress / preloadableVideoUrls.length) * 100)
+    : 100;
 
   useEffect(() => {
-    return () => {
-      if (playbackTimeoutRef.current) {
-        window.clearTimeout(playbackTimeoutRef.current);
+    const cleanupVideos = [];
+    const loadedUrls = new Set();
+    const initialUrl = slides[0].videoUrl.trim() || preloadableVideoUrls[0];
+
+    if (!initialUrl) {
+      setBootReady(true);
+      return undefined;
+    }
+
+    const markLoaded = (url) => {
+      if (loadedUrls.has(url)) {
+        return;
+      }
+
+      loadedUrls.add(url);
+      setPreloadProgress(loadedUrls.size);
+    };
+
+    const markBootReady = (url) => {
+      if (url === initialUrl) {
+        setBootReady(true);
       }
     };
-  }, []);
 
-  const startPlaylist = () => {
-    playlistStartRequestedRef.current = true;
+    const fallbackTimer = window.setTimeout(() => {
+      setBootReady(true);
+    }, 9000);
 
-    if (!spotifyControllerRef.current) {
-      return;
-    }
+    preloadableVideoUrls.forEach((url) => {
+      const video = document.createElement("video");
+      video.preload = "auto";
+      video.muted = true;
+      video.playsInline = true;
+      video.src = url;
 
-    if (playbackTimeoutRef.current) {
-      window.clearTimeout(playbackTimeoutRef.current);
-    }
+      const onLoaded = () => {
+        markLoaded(url);
+        markBootReady(url);
+      };
 
-    try {
-      spotifyControllerRef.current.play();
-      setMusicBlocked(false);
-      playbackTimeoutRef.current = window.setTimeout(() => {
-        setMusicBlocked(true);
-      }, 1600);
-    } catch {
-      setMusicBlocked(true);
-    }
-  };
+      const onError = () => {
+        markLoaded(url);
+        markBootReady(url);
+      };
+
+      video.addEventListener("loadeddata", onLoaded, { once: true });
+      video.addEventListener("canplaythrough", onLoaded, { once: true });
+      video.addEventListener("error", onError, { once: true });
+      video.load();
+
+      preloaderVideosRef.current.push(video);
+      cleanupVideos.push(() => {
+        video.removeEventListener("loadeddata", onLoaded);
+        video.removeEventListener("canplaythrough", onLoaded);
+        video.removeEventListener("error", onError);
+        video.src = "";
+        video.load();
+      });
+    });
+
+    return () => {
+      window.clearTimeout(fallbackTimer);
+      cleanupVideos.forEach((cleanup) => cleanup());
+      preloaderVideosRef.current = [];
+    };
+  }, [preloadableVideoUrls]);
 
   const onAdvance = () => {
-    if (!hasInteracted) {
-      setHasInteracted(true);
-      startPlaylist();
-    }
     setStep((prev) => (prev + 1) % slides.length);
-  };
-
-  const onRetryMusic = () => {
-    startPlaylist();
-  };
-
-  const onSpotifyControllerReady = (controller) => {
-    spotifyControllerRef.current = controller;
-
-    if (playlistStartRequestedRef.current) {
-      startPlaylist();
-    }
-  };
-
-  const onSpotifyPlaybackStarted = () => {
-    if (playbackTimeoutRef.current) {
-      window.clearTimeout(playbackTimeoutRef.current);
-    }
-    setMusicBlocked(false);
   };
 
   return (
@@ -340,6 +290,23 @@ function App() {
         "--accent-b": currentSlide.accentB,
       }}
     >
+      {!bootReady ? (
+        <div className="boot-loader">
+          <div className="boot-loader__inner">
+            <p className="boot-loader__eyebrow">Подготавливаем воспоминания</p>
+            <h1 className="boot-loader__title">Загружаем видео для плавного просмотра</h1>
+            <div className="boot-loader__bar">
+              <motion.span
+                className="boot-loader__bar-fill"
+                animate={{ width: `${preloadPercent}%` }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+              />
+            </div>
+            <p className="boot-loader__meta">{preloadPercent}%</p>
+          </div>
+        </div>
+      ) : null}
+
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide.id}
@@ -429,10 +396,7 @@ function App() {
             Можешь остаться послушать музыку,
             <span className="handwritten"> любим тебя</span>.
           </p>
-          <SpotifyPlaylist
-            onControllerReady={onSpotifyControllerReady}
-            onPlaybackStarted={onSpotifyPlaybackStarted}
-          />
+          <YandexMusicPlayer />
         </div>
 
         <div className={`controls${isLastStep ? " final-controls" : ""}`}>
@@ -443,11 +407,6 @@ function App() {
           <p className="step-indicator">{stepText}</p>
         </div>
 
-        {musicBlocked ? (
-          <button className="music-fix" onClick={onRetryMusic} type="button">
-            Нажми, чтобы включить плейлист
-          </button>
-        ) : null}
       </section>
 
       <section className="video-pane">
