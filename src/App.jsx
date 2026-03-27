@@ -185,7 +185,7 @@ function App() {
   const musicFloatRef = useRef(null);
   const gatePlaceholderRef = useRef(null);
   const finalPlaceholderRef = useRef(null);
-  // Mutable ref so positionMusicFloat can read it without stale-closure issues
+  // Tracks current music float state without stale-closure issues
   const musicStateRef = useRef("gate");
   // Once the float is sized from the gate placeholder, we never change
   // width/height again — iOS Safari may restart media on container resize.
@@ -288,98 +288,71 @@ function App() {
   }, [bootReady]);
 
   // ── Music float positioning ────────────────────────────
-  // Reads refs only — no stale-closure issues, empty deps intentional.
   //
-  // CRITICAL iOS RULE: once audio is playing, NEVER change width/height/opacity
-  // on the iframe container — WebKit interprets that as a media layer change and
-  // may restart/glitch playback. We set the size ONCE (floatSizedRef) from the
-  // gate placeholder, then only ever change top/left to reposition.
-  const positionMusicFloat = useCallback(() => {
+  // RULE: the iframe container must be COMPLETELY STATIC once audio is playing.
+  // iOS Safari monitors active style mutations on iframe containers and will
+  // suspend media if it detects continuous layout changes (rAF loops, scroll
+  // listeners, etc.). Each state transition is allowed ONE positioning write;
+  // after that the element is never touched until the next state change.
+  //
+  // Hidden state uses NO inline style writes at all — the CSS class itself
+  // declares top:-9999px !important which overrides any previously-set inline
+  // top/left. This keeps the DOM completely frozen during hidden playback.
+
+  // Place the float over a placeholder element — called at most once per state.
+  const placeOverElement = useCallback((el) => {
     const float = musicFloatRef.current;
-    if (!float) return;
-
-    const state = musicStateRef.current;
-    float.className = `music-float music-float--${state}`;
-
-    if (state === "gate") {
-      const el = gatePlaceholderRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      if (r.width < 2 || r.height < 2) return;
-      // Set size ONCE — never change after this point
-      if (!floatSizedRef.current) {
-        float.style.width = `${r.width}px`;
-        float.style.height = `${r.height}px`;
-        float.style.pointerEvents = "auto";
-        float.style.zIndex = "20";
-        floatSizedRef.current = true;
-      }
-      // Only top/left updates from here on
-      float.style.top = `${r.top}px`;
-      float.style.left = `${r.left}px`;
-    } else if (state === "final") {
-      const el = finalPlaceholderRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      if (r.width < 2 || r.height < 2) return;
-      // Resize to match the final panel — audio has been stable for a while
-      float.style.top = `${r.top}px`;
-      float.style.left = `${r.left}px`;
+    if (!float || !el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return;
+    if (!floatSizedRef.current) {
       float.style.width = `${r.width}px`;
       float.style.height = `${r.height}px`;
-      float.style.zIndex = "6";
-      float.style.pointerEvents = "auto";
-    } else {
-      // HIDDEN — audio keeps playing; ONLY move off-screen, never resize
-      float.style.top = "-9999px";
-      float.style.left = "0";
-      float.style.zIndex = "1";
-      float.style.pointerEvents = "none";
+      floatSizedRef.current = true;
     }
+    float.style.top = `${r.top}px`;
+    float.style.left = `${r.left}px`;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Gate phase: rAF loop tracks entrance animation (placeholder y: 22→0)
+  // Gate phase: position ONCE immediately, then ONCE more after the entrance
+  // animation settles (~960ms). No rAF loop — two discrete writes, then stop.
   useEffect(() => {
     if (!bootReady || hasEntered) return undefined;
     musicStateRef.current = "gate";
-    let rafId;
-    const tick = () => { positionMusicFloat(); rafId = requestAnimationFrame(tick); };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [bootReady, hasEntered, positionMusicFloat]);
+    const float = musicFloatRef.current;
+    if (float) float.className = "music-float music-float--gate";
+    placeOverElement(gatePlaceholderRef.current);
+    const t = window.setTimeout(
+      () => placeOverElement(gatePlaceholderRef.current),
+      960,
+    );
+    return () => window.clearTimeout(t);
+  }, [bootReady, hasEntered, placeOverElement]);
 
-  // Hidden phase (entered, not on final slide) — safe: only moves top/left
+  // Hidden phase: CSS class change ONLY — zero inline style writes.
+  // .music-float--hidden declares top:-9999px !important in CSS, which
+  // overrides the inline top/left that were set during the gate phase.
+  // After this class flip the element is completely untouched until slide 4.
   useEffect(() => {
     if (!hasEntered || isLastStep) return;
     musicStateRef.current = "hidden";
-    positionMusicFloat();
-  }, [hasEntered, isLastStep, positionMusicFloat]);
+    const float = musicFloatRef.current;
+    if (float) float.className = "music-float music-float--hidden";
+  }, [hasEntered, isLastStep]);
 
-  // Final slide: rAF burst during panel-open CSS transition, then scroll tracking
+  // Final slide: ONE positioning write after the playlist panel CSS transition
+  // finishes (~550ms). No rAF, no scroll listener, no resize listener.
   useEffect(() => {
     if (!hasEntered || !isLastStep) return undefined;
     musicStateRef.current = "final";
-
-    let rafId;
-    const start = performance.now();
-    const trackOpen = () => {
-      positionMusicFloat();
-      if (performance.now() - start < 700) rafId = requestAnimationFrame(trackOpen);
-    };
-    rafId = requestAnimationFrame(trackOpen);
-
-    const textPane = document.querySelector(".text-pane");
-    const onScroll = () => positionMusicFloat();
-    const onResize = () => positionMusicFloat();
-    textPane?.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize, { passive: true });
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      textPane?.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-    };
-  }, [hasEntered, isLastStep, positionMusicFloat]);
+    const float = musicFloatRef.current;
+    if (float) float.className = "music-float music-float--final";
+    const t = window.setTimeout(
+      () => placeOverElement(finalPlaceholderRef.current),
+      600,
+    );
+    return () => window.clearTimeout(t);
+  }, [hasEntered, isLastStep, placeOverElement]);
 
   const onEnterSite = () => {
     setHasEntered(true);
