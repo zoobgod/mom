@@ -300,12 +300,14 @@ function App() {
   // top/left. This keeps the DOM completely frozen during hidden playback.
 
   // Place the float over a placeholder element — called at most once per state.
-  const placeOverElement = useCallback((el) => {
+  // Pass resizeFloat=true when moving to a new state that may have different
+  // dimensions (e.g. the final playlist panel vs. the gate placeholder).
+  const placeOverElement = useCallback((el, resizeFloat = false) => {
     const float = musicFloatRef.current;
     if (!float || !el) return;
     const r = el.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) return;
-    if (!floatSizedRef.current) {
+    if (!floatSizedRef.current || resizeFloat) {
       float.style.width = `${r.width}px`;
       float.style.height = `${r.height}px`;
       floatSizedRef.current = true;
@@ -340,15 +342,21 @@ function App() {
     if (float) float.className = "music-float music-float--hidden";
   }, [hasEntered, isLastStep]);
 
-  // Final slide: ONE positioning write after the playlist panel CSS transition
-  // finishes (~550ms). No rAF, no scroll listener, no resize listener.
+  // Final slide: expand the mini-player into the playlist panel.
+  // 1. Immediately switch class and write top:-9999px to avoid a brief flash
+  //    at the stale gate position (the --hidden !important rules are now gone).
+  // 2. After the playlist panel CSS transition (~550ms), measure the final
+  //    placeholder and snap into place — one write, then stop.
   useEffect(() => {
     if (!hasEntered || !isLastStep) return undefined;
     musicStateRef.current = "final";
     const float = musicFloatRef.current;
-    if (float) float.className = "music-float music-float--final";
+    if (float) {
+      float.className = "music-float music-float--final";
+      float.style.top = "-9999px"; // hold off-screen during CSS transition
+    }
     const t = window.setTimeout(
-      () => placeOverElement(finalPlaceholderRef.current),
+      () => placeOverElement(finalPlaceholderRef.current, true),
       600,
     );
     return () => window.clearTimeout(t);
