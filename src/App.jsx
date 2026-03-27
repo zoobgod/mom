@@ -1,27 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 
-const YANDEX_MUSIC_EMBED_URL = "https://music.yandex.com/iframe/playlist/zoomzoober/1033";
-
-// Gate embed: no autoplay — user taps play on the real player widget.
-// iOS Safari allows audio because the gesture is INSIDE the iframe itself.
-const GATE_MUSIC_URL = YANDEX_MUSIC_EMBED_URL.trim();
-
-// Final embed: autoplay=1 — injected synchronously inside the "Войти" gesture handler.
-// iOS Safari propagates user-activation to iframes created synchronously in a gesture.
-const AUTOPLAY_MUSIC_URL = (() => {
-  const url = YANDEX_MUSIC_EMBED_URL.trim();
-  if (!url) return "";
-  try {
-    const u = new URL(url);
-    u.searchParams.set("autoplay", "1");
-    return u.toString();
-  } catch {
-    return url.includes("?") ? `${url}&autoplay=1` : `${url}?autoplay=1`;
-  }
-})();
+// No ?autoplay=1 on the gate — user taps play themselves inside the iframe,
+// which is a direct gesture in the iframe's own browsing context (iOS allows it).
+const GATE_MUSIC_URL = "https://music.yandex.com/iframe/playlist/zoomzoober/1033";
 
 const VIDEO_LINKS = {
   welcome: "https://www.dropbox.com/scl/fi/ddf5llr1dknxlpocdsk4d/01-welcome_compressed.mp4?rlkey=048j762bdvgnrxxftj0ynhnwm&st=ix8twyap&raw=1",
@@ -128,9 +112,7 @@ function PlyrVideo({ src, filter, onError }) {
   const videoRef = useRef(null);
 
   useEffect(() => {
-    if (!videoRef.current) {
-      return undefined;
-    }
+    if (!videoRef.current) return undefined;
 
     const player = new Plyr(videoRef.current, {
       autoplay: true,
@@ -148,9 +130,7 @@ function PlyrVideo({ src, filter, onError }) {
     player.loop = true;
     player.play().catch(() => {});
 
-    return () => {
-      player.destroy();
-    };
+    return () => { player.destroy(); };
   }, []);
 
   return (
@@ -178,52 +158,52 @@ function App() {
   const [videoFailed, setVideoFailed] = useState({});
   const [bootReady, setBootReady] = useState(false);
   const [preloadProgress, setPreloadProgress] = useState(0);
-  // Shown after a short delay — nudges user to tap play on the embed first
   const [showEnterButton, setShowEnterButton] = useState(false);
 
   const preloaderVideosRef = useRef([]);
-  // Container for the final-slide iframe. Injected synchronously in onEnterSite
-  // so iOS Safari's user-activation token (from the "Войти" tap) propagates to it.
-  const musicFinalRef = useRef(null);
-  const musicFinalInjectedRef = useRef(false);
+
+  // ── Music float refs ───────────────────────────────────
+  // The iframe lives in musicFloatRef — a persistent fixed div that NEVER
+  // unmounts. We reposition it over different placeholder divs as the user
+  // moves through the experience:
+  //   'gate'   → over gatePlaceholderRef (inside the intro gate)
+  //   'hidden' → off-screen (audio keeps playing, iframe stays alive)
+  //   'final'  → over finalPlaceholderRef (inside the playlist panel)
+  const musicFloatRef = useRef(null);
+  const gatePlaceholderRef = useRef(null);
+  const finalPlaceholderRef = useRef(null);
+  // Mutable ref so positionMusicFloat can read it without stale-closure issues
+  const musicStateRef = useRef("gate");
 
   const currentSlide = slides[step];
   const currentVideoUrl = currentSlide.videoUrl.trim();
-
   const isLastStep = step === slides.length - 1;
+
   const preloadableVideoUrls = useMemo(
-    () => [...new Set(slides.map((slide) => slide.videoUrl.trim()).filter(Boolean))],
+    () => [...new Set(slides.map((s) => s.videoUrl.trim()).filter(Boolean))],
     [],
   );
   const preloadPercent = preloadableVideoUrls.length
     ? Math.round((preloadProgress / preloadableVideoUrls.length) * 100)
     : 100;
 
-  // Video preloading
+  // ── Video preloading ───────────────────────────────────
   useEffect(() => {
     let isCancelled = false;
     const cleanupVideos = [];
     const loadedUrls = new Set();
     const initialUrl = slides[0].videoUrl.trim() || preloadableVideoUrls[0];
 
-    if (!initialUrl) {
-      setBootReady(true);
-      return undefined;
-    }
+    if (!initialUrl) { setBootReady(true); return undefined; }
 
     const markLoaded = (url) => {
       if (loadedUrls.has(url)) return;
       loadedUrls.add(url);
       setPreloadProgress(loadedUrls.size);
     };
+    const markBootReady = (url) => { if (url === initialUrl) setBootReady(true); };
 
-    const markBootReady = (url) => {
-      if (url === initialUrl) setBootReady(true);
-    };
-
-    const fallbackTimer = window.setTimeout(() => {
-      setBootReady(true);
-    }, 9000);
+    const fallbackTimer = window.setTimeout(() => setBootReady(true), 9000);
 
     const preloadVideo = (url) =>
       new Promise((resolve) => {
@@ -233,44 +213,32 @@ function App() {
         video.playsInline = true;
         video.src = url;
 
-        const finish = () => {
-          markLoaded(url);
-          markBootReady(url);
-          resolve();
-        };
-
-        const onLoaded = () => finish();
-        const onError = () => finish();
-
+        const finish = () => { markLoaded(url); markBootReady(url); resolve(); };
         const timeoutId = window.setTimeout(() => finish(), 12000);
 
-        video.addEventListener("loadeddata", onLoaded, { once: true });
-        video.addEventListener("canplay", onLoaded, { once: true });
-        video.addEventListener("error", onError, { once: true });
+        video.addEventListener("loadeddata", finish, { once: true });
+        video.addEventListener("canplay", finish, { once: true });
+        video.addEventListener("error", finish, { once: true });
         video.load();
 
         preloaderVideosRef.current.push(video);
         cleanupVideos.push(() => {
           window.clearTimeout(timeoutId);
-          video.removeEventListener("loadeddata", onLoaded);
-          video.removeEventListener("canplay", onLoaded);
-          video.removeEventListener("error", onError);
+          video.removeEventListener("loadeddata", finish);
+          video.removeEventListener("canplay", finish);
+          video.removeEventListener("error", finish);
           video.src = "";
           video.load();
         });
       });
 
     const runPreloadQueue = async () => {
-      const firstIndex = preloadableVideoUrls.findIndex((url) => url === initialUrl);
-      const orderedUrls =
+      const firstIndex = preloadableVideoUrls.findIndex((u) => u === initialUrl);
+      const ordered =
         firstIndex === -1
           ? preloadableVideoUrls
-          : [
-              preloadableVideoUrls[firstIndex],
-              ...preloadableVideoUrls.filter((url) => url !== initialUrl),
-            ];
-
-      for (const url of orderedUrls) {
+          : [initialUrl, ...preloadableVideoUrls.filter((u) => u !== initialUrl)];
+      for (const url of ordered) {
         if (isCancelled) break;
         await preloadVideo(url);
       }
@@ -281,32 +249,106 @@ function App() {
     return () => {
       isCancelled = true;
       window.clearTimeout(fallbackTimer);
-      cleanupVideos.forEach((cleanup) => cleanup());
+      cleanupVideos.forEach((c) => c());
       preloaderVideosRef.current = [];
     };
   }, [preloadableVideoUrls]);
 
-  // Delay showing the "Войти" button so user sees and interacts with the player first
+  // Delay the "Войти" button so user sees and taps the player first
   useEffect(() => {
     if (!bootReady) return undefined;
-    const timer = window.setTimeout(() => setShowEnterButton(true), 2200);
-    return () => window.clearTimeout(timer);
+    const t = window.setTimeout(() => setShowEnterButton(true), 2200);
+    return () => window.clearTimeout(t);
   }, [bootReady]);
 
-  const onEnterSite = () => {
-    // Inject the final-slide iframe synchronously within this user-gesture handler.
-    // iOS Safari propagates user-activation to cross-origin iframes created
-    // synchronously inside a touch/click handler — so ?autoplay=1 will work.
-    if (AUTOPLAY_MUSIC_URL && musicFinalRef.current && !musicFinalInjectedRef.current) {
-      musicFinalInjectedRef.current = true;
-      const iframe = document.createElement("iframe");
-      iframe.src = AUTOPLAY_MUSIC_URL;
-      iframe.className = "yandex-embed-frame";
-      iframe.title = "Yandex Music playlist";
-      iframe.setAttribute("frameborder", "0");
-      iframe.setAttribute("allow", "autoplay; clipboard-write; encrypted-media; fullscreen");
-      musicFinalRef.current.appendChild(iframe);
+  // ── Music float positioning ────────────────────────────
+  // Reads refs only — no stale-closure issues, empty deps intentional.
+  const positionMusicFloat = useCallback(() => {
+    const float = musicFloatRef.current;
+    if (!float) return;
+
+    const state = musicStateRef.current;
+    // Update CSS class so annotation visibility is controlled by CSS
+    float.className = `music-float music-float--${state}`;
+
+    const placeOver = (el, zIndex) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return false;
+      Object.assign(float.style, {
+        top: `${r.top}px`,
+        left: `${r.left}px`,
+        width: `${r.width}px`,
+        height: `${r.height}px`,
+        zIndex: String(zIndex),
+        opacity: "1",
+        pointerEvents: "auto",
+      });
+      return true;
+    };
+
+    if (state === "gate") {
+      placeOver(gatePlaceholderRef.current, 20);
+    } else if (state === "final") {
+      placeOver(finalPlaceholderRef.current, 6);
+    } else {
+      // Hidden — iframe stays in DOM, audio keeps playing
+      Object.assign(float.style, {
+        top: "-9999px",
+        left: "-9999px",
+        width: "1px",
+        height: "1px",
+        opacity: "0",
+        pointerEvents: "none",
+        zIndex: "1",
+      });
     }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Gate phase: rAF loop so float tracks the entrance animation of the placeholder
+  useEffect(() => {
+    if (!bootReady || hasEntered) return undefined;
+    musicStateRef.current = "gate";
+    let rafId;
+    const tick = () => { positionMusicFloat(); rafId = requestAnimationFrame(tick); };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [bootReady, hasEntered, positionMusicFloat]);
+
+  // Hidden phase (entered, not on final slide)
+  useEffect(() => {
+    if (!hasEntered || isLastStep) return;
+    musicStateRef.current = "hidden";
+    positionMusicFloat();
+  }, [hasEntered, isLastStep, positionMusicFloat]);
+
+  // Final slide: rAF loop for the panel-open animation, then scroll tracking
+  useEffect(() => {
+    if (!hasEntered || !isLastStep) return undefined;
+    musicStateRef.current = "final";
+
+    let rafId;
+    const start = performance.now();
+    const trackOpen = () => {
+      positionMusicFloat();
+      if (performance.now() - start < 700) rafId = requestAnimationFrame(trackOpen);
+    };
+    rafId = requestAnimationFrame(trackOpen);
+
+    const textPane = document.querySelector(".text-pane");
+    const onScroll = () => positionMusicFloat();
+    const onResize = () => positionMusicFloat();
+    textPane?.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize, { passive: true });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      textPane?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [hasEntered, isLastStep, positionMusicFloat]);
+
+  const onEnterSite = () => {
     setHasEntered(true);
   };
 
@@ -324,11 +366,53 @@ function App() {
   return (
     <div
       className="page"
-      style={{
-        "--accent-a": currentSlide.accentA,
-        "--accent-b": currentSlide.accentB,
-      }}
+      style={{ "--accent-a": currentSlide.accentA, "--accent-b": currentSlide.accentB }}
     >
+      {/*
+        ── Persistent music float ──────────────────────────
+        NEVER inside AnimatePresence. The iframe lives here from bootReady
+        onward and is repositioned by JS — it is never unmounted, so audio
+        survives the gate exit and every slide transition.
+      */}
+      <div ref={musicFloatRef} className="music-float music-float--gate">
+        {bootReady && (
+          <>
+            {/* Handwritten annotation — only visible in gate state (CSS) */}
+            <div className="gate-annotation" aria-hidden="true">
+              <span className="gate-annotation__text">Мася, жмякни сюда</span>
+              <svg
+                className="gate-annotation__arrow"
+                viewBox="0 0 100 65"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M 88,8 C 68,4 28,18 12,50"
+                  stroke="rgba(255,255,255,0.68)"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 4,44 L 12,50 L 19,43"
+                  stroke="rgba(255,255,255,0.68)"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <iframe
+              className="yandex-embed-frame"
+              src={GATE_MUSIC_URL}
+              title="Yandex Music playlist"
+              frameBorder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen"
+              loading="eager"
+            />
+          </>
+        )}
+      </div>
+
       {/* Loading screen */}
       <AnimatePresence>
         {!bootReady && (
@@ -357,7 +441,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Intro gate — shows the Yandex Music embed so user taps play directly */}
+      {/* Intro gate */}
       <AnimatePresence>
         {bootReady && !hasEntered && (
           <motion.div
@@ -377,55 +461,20 @@ function App() {
                 Для тебя
               </motion.p>
 
-              {/* Music player + handwritten annotation */}
+              {/*
+                Layout placeholder — reserves exactly the same space as the
+                music float so the gate inner layout is stable. The float
+                (position: fixed, z-index: 20) is positioned on top of this
+                by the rAF tracking loop.
+              */}
               <motion.div
-                className="gate-player-wrap"
+                ref={gatePlaceholderRef}
+                className="gate-player-placeholder"
                 initial={{ opacity: 0, y: 22 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.28, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-              >
-                {/*
-                  Handwritten annotation — pointer-events: none so taps pass through
-                  to the iframe. The SVG arrow curves from the label toward the
-                  left side of the embed where the track play buttons live.
-                */}
-                <div className="gate-annotation" aria-hidden="true">
-                  <span className="gate-annotation__text">Мася, жмякни сюда</span>
-                  <svg
-                    className="gate-annotation__arrow"
-                    viewBox="0 0 100 65"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M 88,8 C 68,4 28,18 12,50"
-                      stroke="rgba(255,255,255,0.68)"
-                      strokeWidth="2.4"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M 4,44 L 12,50 L 19,43"
-                      stroke="rgba(255,255,255,0.68)"
-                      strokeWidth="2.4"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
+              />
 
-                <div className="yandex-embed-shell">
-                  <iframe
-                    className="yandex-embed-frame"
-                    src={GATE_MUSIC_URL}
-                    title="Yandex Music playlist"
-                    frameBorder="0"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen"
-                    loading="eager"
-                  />
-                </div>
-              </motion.div>
-
-              {/* Enter button — delayed so user sees and interacts with the player first */}
               <AnimatePresence>
                 {showEnterButton && (
                   <motion.button
@@ -517,11 +566,10 @@ function App() {
             <span className="handwritten"> любим тебя</span>.
           </p>
           {/*
-            musicFinalRef container — always in the DOM (playlist-panel is always rendered,
-            just CSS-hidden). The iframe is injected synchronously in onEnterSite so it
-            carries iOS Safari's user-activation from the "Войти" tap.
+            Placeholder for the music float on the final slide.
+            The float is positioned by JS to exactly cover this div.
           */}
-          <div ref={musicFinalRef} className="yandex-embed-shell" />
+          <div ref={finalPlaceholderRef} className="yandex-embed-shell" />
         </div>
 
         <div className={`controls${isLastStep ? " final-controls" : ""}`}>
@@ -532,7 +580,7 @@ function App() {
         </div>
       </section>
 
-      {/* Video panel — only rendered after user enters so autoplay policy is satisfied */}
+      {/* Video panel */}
       <section className="video-pane">
         <AnimatePresence mode="wait">
           <motion.div
