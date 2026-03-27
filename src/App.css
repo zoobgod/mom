@@ -157,6 +157,16 @@ button,
   left: -9999px;
   width: 1px;
   height: 1px;
+  /* Smooth transition for gate→hidden (mini-player flies to corner).
+     Transition is disabled on --final to avoid a fly-in from -9999px. */
+  transition:
+    top 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    right 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    left 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    bottom 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.55s ease;
 }
 
 /* Gate: z-index/pointer-events come from CSS; top/left/size set by JS once */
@@ -165,27 +175,32 @@ button,
   pointer-events: auto;
 }
 
-/* Hidden: mini-player pinned to bottom-right corner — ALWAYS VISIBLE.
-   iOS Safari suspends audio from cross-origin iframes that leave the visual
-   viewport (~12s grace period). Keeping the container on-screen prevents
-   suspension. !important overrides the inline top/left/width/height that
-   the gate phase wrote. */
+/* Hidden: mini-player in the top-right of the video area, stacked below the
+   mute button. MUST stay in the visual viewport — iOS Safari suspends iframe
+   audio ~12s after the container leaves the viewport.
+   !important overrides inline top/left/width/height from the gate phase.
+   Position matches the mute-button column (right: 0.75rem) so the two
+   controls share the same right edge and don't overlap vertically. */
 .music-float--hidden {
-  bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
-  right: 1rem !important;
-  top: auto !important;
+  top: calc(3.5rem + env(safe-area-inset-top)) !important;  /* below mute btn */
+  right: 0.75rem !important;
   left: auto !important;
+  bottom: auto !important;
   width: 220px !important;
-  height: 100px !important;
+  height: 80px !important;
   z-index: 10;
   pointer-events: auto;
   overflow: hidden;
+  border-radius: 12px !important;
 }
 
-/* Final: z-index/pointer-events come from CSS; top/left/size set by JS once */
+/* Final: z-index/pointer-events come from CSS; top/left/size set by JS once.
+   Disable transition so the float doesn't fly across the screen from -9999px
+   (the brief top:-9999px written in the effect would otherwise animate). */
 .music-float--final {
   z-index: 6;
   pointer-events: auto;
+  transition: none;
 }
 
 .music-float .yandex-embed-frame {
@@ -601,10 +616,10 @@ button,
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;  /* rounded rect — clearly a toggle, not a close button */
+  background: rgba(0, 0, 0, 0.38);
+  color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -617,8 +632,8 @@ button,
 
 .video-mute-btn:hover,
 .video-mute-btn:active {
-  background: rgba(0, 0, 0, 0.65);
-  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(0, 0, 0, 0.58);
+  border-color: rgba(255, 255, 255, 0.26);
 }
 
 .video-mute-btn svg {
