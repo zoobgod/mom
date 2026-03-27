@@ -4,10 +4,17 @@ import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 
 const SPOTIFY_PLAYLIST_URI = "spotify:playlist:4UAjOazfnYv008ejMGDVSD";
+const VIDEO_LINKS = {
+  welcome: "",
+  childhood: "",
+  strength: "",
+  final: "",
+};
 
 const slides = [
   {
     id: "welcome",
+    videoKey: "welcome",
     eyebrow: "Шаг 01",
     heading: (
       <>
@@ -19,7 +26,7 @@ const slides = [
       "Спасибо тебе за жизнь, за любовь, за тепло, которым ты наполнила наш мир.",
       "Сегодня все это только для тебя.",
     ],
-    video: "/media/videos/01-welcome.mp4",
+    videoUrl: VIDEO_LINKS.welcome,
     buttonLabel: "Начать",
     accentA: "#f2f2f2",
     accentB: "#d8d8d8",
@@ -29,6 +36,7 @@ const slides = [
   },
   {
     id: "childhood",
+    videoKey: "childhood",
     eyebrow: "Шаг 02",
     heading: (
       <>
@@ -40,7 +48,7 @@ const slides = [
       "Ты всегда шла вперед ради нас и никогда не переставала любить.",
       "Именно благодаря тебе и твоим стараниям мы стали теми, кем являемся.",
     ],
-    video: "/media/videos/02-childhood.mp4",
+    videoUrl: VIDEO_LINKS.childhood,
     buttonLabel: "Дальше",
     accentA: "#28b8ff",
     accentB: "#16e085",
@@ -50,6 +58,7 @@ const slides = [
   },
   {
     id: "strength",
+    videoKey: "strength",
     eyebrow: "Шаг 03",
     heading: (
       <>
@@ -61,7 +70,7 @@ const slides = [
       "Твоя забота, твое терпение и твое большое сердце всегда будут внутри нас.",
       "Спасибо тебе за каждую жертву, за каждое усилие и за каждую тихую победу.",
     ],
-    video: "/media/videos/03-strength.mp4",
+    videoUrl: VIDEO_LINKS.strength,
     buttonLabel: "Еще",
     accentA: "#3f7bff",
     accentB: "#ffb703",
@@ -71,6 +80,7 @@ const slides = [
   },
   {
     id: "final",
+    videoKey: "final",
     eyebrow: "Шаг 04",
     heading: (
       <>
@@ -82,8 +92,8 @@ const slides = [
       "Спасибо, что ты у нас есть. Спасибо, что ты именно такая.",
       "Ты наше все. Всегда.",
     ],
-    video: "/media/videos/04-final-main.mp4",
-    buttonLabel: "Сначала",
+    videoUrl: VIDEO_LINKS.final,
+    buttonLabel: "Начать заново",
     accentA: "#27d3ff",
     accentB: "#ff5d8f",
     videoFilter: "saturate(1.18)",
@@ -257,6 +267,7 @@ function App() {
   const playlistStartRequestedRef = useRef(false);
   const playbackTimeoutRef = useRef(null);
   const currentSlide = slides[step];
+  const currentVideoUrl = currentSlide.videoUrl.trim();
 
   const isLastStep = step === slides.length - 1;
   const stepText = useMemo(
@@ -413,20 +424,6 @@ function App() {
           </motion.div>
         </AnimatePresence>
 
-        <div className="controls">
-          <button className="advance" onClick={onAdvance} type="button">
-            {isLastStep ? "Start Again" : currentSlide.buttonLabel}
-          </button>
-
-          <p className="step-indicator">{stepText}</p>
-        </div>
-
-        {musicBlocked ? (
-          <button className="music-fix" onClick={onRetryMusic} type="button">
-            Нажми, чтобы включить плейлист
-          </button>
-        ) : null}
-
         <div className={`playlist-panel${isLastStep ? " is-visible" : ""}`}>
           <p className="playlist-heading">
             Можешь остаться послушать музыку,
@@ -437,32 +434,59 @@ function App() {
             onPlaybackStarted={onSpotifyPlaybackStarted}
           />
         </div>
+
+        <div className={`controls${isLastStep ? " final-controls" : ""}`}>
+          <button className="advance" onClick={onAdvance} type="button">
+            {currentSlide.buttonLabel}
+          </button>
+
+          <p className="step-indicator">{stepText}</p>
+        </div>
+
+        {musicBlocked ? (
+          <button className="music-fix" onClick={onRetryMusic} type="button">
+            Нажми, чтобы включить плейлист
+          </button>
+        ) : null}
       </section>
 
       <section className="video-pane">
         <AnimatePresence mode="wait">
           <motion.div
-            key={currentSlide.video}
+            key={`${currentSlide.id}-${currentVideoUrl || "empty"}`}
             className="memory-video-shell"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <PlyrVideo
-              src={currentSlide.video}
-              filter={currentSlide.videoFilter}
-              onError={() =>
-                setVideoFailed((prev) => ({ ...prev, [currentSlide.video]: true }))
-              }
-            />
+            {currentVideoUrl ? (
+              <PlyrVideo
+                src={currentVideoUrl}
+                filter={currentSlide.videoFilter}
+                onError={() =>
+                  setVideoFailed((prev) => ({ ...prev, [currentSlide.id]: true }))
+                }
+              />
+            ) : (
+              <div className="video-fallback video-link-placeholder">
+                <p>Вставь ссылку на видео сюда:</p>
+                <code>{`VIDEO_LINKS.${currentSlide.videoKey}`}</code>
+                <p className="video-help">
+                  Файл для редактирования: `src/App.jsx`
+                </p>
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
 
-        {videoFailed[currentSlide.video] ? (
+        {currentVideoUrl && videoFailed[currentSlide.id] ? (
           <div className="video-fallback">
-            <p>Добавь видео по этому пути:</p>
-            <code>{currentSlide.video}</code>
+            <p>Проверь ссылку на видео:</p>
+            <code>{currentVideoUrl}</code>
+            <p className="video-help">
+              Она должна вести прямо на видеофайл и открываться без блокировки.
+            </p>
           </div>
         ) : null}
       </section>
