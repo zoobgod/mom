@@ -167,7 +167,7 @@ function YandexMusicPlayer() {
     return (
       <div className="playlist-placeholder">
         <p>Вставь ссылку на embed-плеер Яндекс Музыки сюда:</p>
-        <code>YANDEX_MUSIC_EMBED_URL</code>
+        <code><iframe frameborder="0" allow="clipboard-write" style="border:none;width:614px;height:556px;" width="614" height="556" src="https://music.yandex.com/iframe/playlist/zoomzoober/1033">Слушайте <a href="https://music.yandex.com/playlists/94ec9e86-506e-cbcf-9fd6-3e13653a7d94?utm_source=web&utm_medium=copy_link">have a fantastic day babe</a> — <a href="https://music.yandex.com/users/zoomzoober">Никита Иванов</a> на Яндекс Музыке</iframe></code>
         <p className="playlist-help">
           В `src/App.jsx` вставь значение `src` из Share → HTML code.
         </p>
