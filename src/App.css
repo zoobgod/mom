@@ -136,10 +136,14 @@ button,
 
 /*
   The iframe lives here — never inside AnimatePresence.
-  JS repositions this div to overlay the correct placeholder:
-    music-float--gate   → over the gate placeholder
-    music-float--hidden → off-screen (-9999px), audio keeps playing
-    music-float--final  → over the playlist panel placeholder
+  JS switches CSS classes to move between three states:
+    music-float--gate   → visible over the gate placeholder
+    music-float--hidden → off-screen; audio plays; ZERO JS writes touch this
+    music-float--final  → visible over the playlist panel placeholder
+
+  CRITICAL: .music-float--hidden uses !important so it overrides the inline
+  top/left set during the gate phase without any JS style writes. This keeps
+  the container completely frozen during playback on slides 1–3.
 */
 .music-float {
   position: fixed;
@@ -147,11 +151,31 @@ button,
   overflow: hidden;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.07);
-  /* Initial position before JS kicks in */
+  /* Default: off-screen until JS sizes and places it */
   top: -9999px;
   left: -9999px;
   width: 1px;
   height: 1px;
+}
+
+/* Gate: z-index/pointer-events come from CSS; top/left/size set by JS once */
+.music-float--gate {
+  z-index: 20;
+  pointer-events: auto;
+}
+
+/* Hidden: CSS overrides any inline top/left — NO JS writes needed here */
+.music-float--hidden {
+  top: -9999px !important;
+  left: 0 !important;
+  pointer-events: none !important;
+  z-index: 1;
+}
+
+/* Final: z-index/pointer-events come from CSS; top/left/size set by JS once */
+.music-float--final {
+  z-index: 6;
+  pointer-events: auto;
 }
 
 .music-float .yandex-embed-frame {
