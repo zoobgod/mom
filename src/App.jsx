@@ -161,6 +161,7 @@ function PlyrVideo({ src, filter, onError }) {
 
 function YandexMusicPlayer() {
   const embedUrl = YANDEX_MUSIC_EMBED_URL.trim();
+  let resolvedEmbedUrl = "";
 
   if (!embedUrl) {
     return (
@@ -174,11 +175,21 @@ function YandexMusicPlayer() {
     );
   }
 
+  try {
+    const url = new URL(embedUrl);
+    url.searchParams.set("autoplay", "1");
+    resolvedEmbedUrl = url.toString();
+  } catch {
+    resolvedEmbedUrl = embedUrl.includes("?")
+      ? `${embedUrl}&autoplay=1`
+      : `${embedUrl}?autoplay=1`;
+  }
+
   return (
     <div className="yandex-embed-shell">
       <iframe
         className="yandex-embed-frame"
-        src={embedUrl}
+        src={resolvedEmbedUrl}
         title="Yandex Music playlist"
         frameBorder="0"
         allow="autoplay; clipboard-write; encrypted-media; fullscreen"
