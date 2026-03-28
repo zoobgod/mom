@@ -5,7 +5,9 @@ import "plyr/dist/plyr.css";
 
 // No ?autoplay=1 on the gate — user taps play themselves inside the iframe,
 // which is a direct gesture in the iframe's own browsing context (iOS allows it).
-const GATE_MUSIC_URL = "https://music.yandex.com/iframe/playlist/zoomzoober/1033";
+// Hash routing (#playlist/user/id) is required by the Yandex Music embed player.
+// Using music.yandex.ru — the primary Russian domain used by the embed router.
+const GATE_MUSIC_URL = "https://music.yandex.ru/iframe/#playlist/zoomzoober/1033/show-cover=1/theme=dark";
 
 const VIDEO_LINKS = {
   welcome: "https://www.dropbox.com/scl/fi/ddf5llr1dknxlpocdsk4d/01-welcome_compressed.mp4?rlkey=048j762bdvgnrxxftj0ynhnwm&st=ix8twyap&raw=1",
